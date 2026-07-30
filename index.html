@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jingu Stadium Order — Stadium Mobile Ordering</title>
-<meta name="description" content="Order from your seat at Jingu Stadium and pick up from a heated locker. A mobile ordering app so you never miss the game.">
+<title>Jingu Stadium Order — USD</title>
+<meta name="description" content="Jingu Stadium mobile ordering in US dollars. Exchange rate: 150 Japanese yen = US$1.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DSEG7+Classic:wght@400;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap" rel="stylesheet">
@@ -1369,7 +1369,7 @@ h3 {
     <div class="qr-modal-card" onclick="event.stopPropagation()">
       <div style="font-size: 36px; margin-bottom: 6px;" id="qty-modal-emoji">🥩</div>
       <h3 id="qty-modal-name" style="margin-bottom: 4px;">Item name</h3>
-      <div id="qty-modal-price" style="font-size: 18px; font-weight: 700; color: var(--amber); margin-bottom: 14px;">¥0</div>
+      <div id="qty-modal-price" style="font-size: 18px; font-weight: 700; color: var(--amber); margin-bottom: 14px;">$0.00</div>
 
       <div style="font-size: 13px; color: var(--cream-dim); margin-bottom: 8px;">Select quantity</div>
 
@@ -1415,6 +1415,7 @@ let cart = {}; // { itemId: { qty, name, price, emoji, storeId, storeName } }
 let currentStoreId = '';
 let paymentMethod = '';
 let countdownInterval = null;
+const formatUSD = amount => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
 // ===== STORE DATA (Item size: S=1pt, M=2pt, L=3pt / 1 Locker holds up to 4pt) =====
 const stores = {
@@ -1423,10 +1424,10 @@ const stores = {
     name: 'Flame Stadium Bowl — BBQ Rice Bowl',
     emoji: '🥩',
     items: [
-      { id: 'yk1', name: 'Premium Kalbi BBQ Rice Bowl', price: 1100, emoji: '🥩', size: 'L', vol: 3 },
-      { id: 'yk2', name: 'Skirt Steak BBQ Rice Bowl', price: 900, emoji: '🍖', size: 'L', vol: 3 },
-      { id: 'yk3', name: 'Bibimbap Rice Bowl', price: 850, emoji: '🍚', size: 'M', vol: 2 },
-      { id: 'yk4', name: 'Extra Kimchi Topping', price: 150, emoji: '🥬', size: 'S', vol: 1 },
+      { id: 'yk1', name: 'Premium Kalbi BBQ Rice Bowl', price: 7.33, emoji: '🥩', size: 'L', vol: 3 },
+      { id: 'yk2', name: 'Skirt Steak BBQ Rice Bowl', price: 6.00, emoji: '🍖', size: 'L', vol: 3 },
+      { id: 'yk3', name: 'Bibimbap Rice Bowl', price: 5.67, emoji: '🍚', size: 'M', vol: 2 },
+      { id: 'yk4', name: 'Extra Kimchi Topping', price: 1.00, emoji: '🥬', size: 'S', vol: 1 },
     ]
   },
   beer: {
@@ -1434,10 +1435,10 @@ const stores = {
     name: 'Jingu Draft Beer Stand',
     emoji: '🍺',
     items: [
-      { id: 'br1', name: 'The Premium Malt’s Draft', price: 800, emoji: '🍺', size: 'S', vol: 1 },
-      { id: 'br2', name: 'Super Dry Draft', price: 750, emoji: '🍻', size: 'S', vol: 1 },
-      { id: 'br3', name: 'Lemon Sour', price: 600, emoji: '🍋', size: 'S', vol: 1 },
-      { id: 'br4', name: 'Oolong Tea', price: 300, emoji: '🍵', size: 'S', vol: 1 },
+      { id: 'br1', name: 'The Premium Malt’s Draft', price: 5.33, emoji: '🍺', size: 'S', vol: 1 },
+      { id: 'br2', name: 'Super Dry Draft', price: 5.00, emoji: '🍻', size: 'S', vol: 1 },
+      { id: 'br3', name: 'Lemon Sour', price: 4.00, emoji: '🍋', size: 'S', vol: 1 },
+      { id: 'br4', name: 'Oolong Tea', price: 2.00, emoji: '🍵', size: 'S', vol: 1 },
     ]
   },
   karaage: {
@@ -1445,10 +1446,10 @@ const stores = {
     name: 'Karaage Grand Prix Gold Award',
     emoji: '🍗',
     items: [
-      { id: 'kr1', name: 'Gold Award Karaage (5 pieces)', price: 700, emoji: '🍗', size: 'M', vol: 2 },
-      { id: 'kr2', name: 'Extra-Spicy Karaage (5 pieces)', price: 750, emoji: '🌶️', size: 'M', vol: 2 },
-      { id: 'kr3', name: 'French Fries', price: 450, emoji: '🍟', size: 'M', vol: 2 },
-      { id: 'kr4', name: 'Chicken Nanban Bento', price: 950, emoji: '🍱', size: 'L', vol: 3 },
+      { id: 'kr1', name: 'Gold Award Karaage (5 pieces)', price: 4.67, emoji: '🍗', size: 'M', vol: 2 },
+      { id: 'kr2', name: 'Extra-Spicy Karaage (5 pieces)', price: 5.00, emoji: '🌶️', size: 'M', vol: 2 },
+      { id: 'kr3', name: 'French Fries', price: 3.00, emoji: '🍟', size: 'M', vol: 2 },
+      { id: 'kr4', name: 'Chicken Nanban Bento', price: 6.33, emoji: '🍱', size: 'L', vol: 3 },
     ]
   }
 };
@@ -1539,7 +1540,7 @@ function renderMenuItems(store) {
         <span class="menu-item-emoji">${item.emoji}</span>
         <div class="menu-item-info">
           <div class="menu-item-name">${item.name}</div>
-          <div class="menu-item-price">¥${item.price.toLocaleString()}</div>
+          <div class="menu-item-price">${formatUSD(item.price)}</div>
           <div class="menu-item-cart-note ${inCart > 0 ? 'visible' : ''}" id="note-${item.id}">${inCart} item(s) in cart</div>
         </div>
       </div>
@@ -1564,9 +1565,9 @@ function openQtyModal(itemId, storeId) {
 
   document.getElementById('qty-modal-emoji').textContent = item.emoji;
   document.getElementById('qty-modal-name').textContent = item.name;
-  document.getElementById('qty-modal-price').textContent = `Unit price ¥${item.price.toLocaleString()}`;
+  document.getElementById('qty-modal-price').textContent = `Unit price ${formatUSD(item.price)}`;
   document.getElementById('qty-modal-num').textContent = modalQty;
-  document.getElementById('btn-confirm-add-cart').textContent = `Add to cart — ¥${(item.price * modalQty).toLocaleString()}`;
+  document.getElementById('btn-confirm-add-cart').textContent = `Add to cart — ${formatUSD(item.price * modalQty)}`;
 
   document.getElementById('qty-modal').classList.add('visible');
 }
@@ -1578,7 +1579,7 @@ function changeModalQty(delta) {
 
   document.getElementById('qty-modal-num').textContent = modalQty;
   if (selectedModalItem) {
-    document.getElementById('btn-confirm-add-cart').textContent = `Add to cart — ¥${(selectedModalItem.price * modalQty).toLocaleString()}`;
+    document.getElementById('btn-confirm-add-cart').textContent = `Add to cart — ${formatUSD(selectedModalItem.price * modalQty)}`;
   }
 }
 
@@ -1684,13 +1685,13 @@ function calcFees() {
   const lockerCapacity = 4;
   const lockerCount = Math.max(1, Math.ceil(totalVol / lockerCapacity));
 
-  const unitLockerFee = 300;
+  const unitLockerFee = 2.00;
   const lockerFee = unitLockerFee * lockerCount;
   const totalFees = lockerFee;
   const grandTotal = subtotal + totalFees;
 
   const lockerLabel = `${totalQty} item(s) / ${lockerCount} locker(s)`;
-  const lockerDetail = `${lockerCount} locker(s) required based on item size and quantity (¥300 × ${lockerCount})`;
+  const lockerDetail = `${lockerCount} locker(s) required based on item size and quantity (${formatUSD(unitLockerFee)} × ${lockerCount})`;
 
   return { subtotal, totalQty, totalVol, lockerCount, unitLockerFee, lockerFee, lockerLabel, lockerDetail, totalFees, grandTotal };
 }
@@ -1703,7 +1704,7 @@ function updateCartBar() {
 
   if (total > 0) {
     bar.classList.add('visible');
-    label.textContent = `${total} item(s) / ¥${price.toLocaleString()}`;
+    label.textContent = `${total} item(s) / ${formatUSD(price)}`;
   } else {
     bar.classList.remove('visible');
   }
@@ -1737,7 +1738,7 @@ function buildConfirmScreen() {
       html += `
         <div class="order-item-row">
           <span class="item-name">${item.emoji} ${item.name}</span>
-          <span class="item-qty">×${item.qty}　¥${(item.price * item.qty).toLocaleString()}</span>
+          <span class="item-qty">×${item.qty}　${formatUSD(item.price * item.qty)}</span>
         </div>
       `;
     });
@@ -1752,7 +1753,7 @@ function buildConfirmScreen() {
     <div class="fee-card-title">💰 Price breakdown</div>
     <div class="fee-row">
       <span>Items subtotal</span>
-      <span>¥${fees.subtotal.toLocaleString()}</span>
+      <span>${formatUSD(fees.subtotal)}</span>
     </div>
     <div class="fee-row">
       <span class="fee-label-wrap">
@@ -1761,17 +1762,17 @@ function buildConfirmScreen() {
           <span class="fee-tooltip">${fees.lockerDetail}</span>
         </span>
       </span>
-      <span>¥${fees.lockerFee.toLocaleString()}</span>
+      <span>${formatUSD(fees.lockerFee)}</span>
     </div>
     <div class="fee-row subtotal-row">
       <span>Total fees</span>
-      <span>¥${fees.totalFees.toLocaleString()}</span>
+      <span>${formatUSD(fees.totalFees)}</span>
     </div>
   `;
 
   document.getElementById('confirm-pickup-method').textContent = `🔒 Heated concourse locker (${fees.lockerCount} locker(s))`;
   document.getElementById('confirm-seat').textContent = getSeatText();
-  document.getElementById('confirm-total').textContent = '¥' + fees.grandTotal.toLocaleString();
+  document.getElementById('confirm-total').textContent = formatUSD(fees.grandTotal);
 }
 
 function toggleTip(el) {
@@ -1786,8 +1787,8 @@ document.getElementById('btn-back-payment').addEventListener('click', () => goTo
 
 function buildPaymentScreen() {
   const fees = calcFees();
-  document.getElementById('pay-total').textContent = '¥' + fees.grandTotal.toLocaleString();
-  document.getElementById('btn-cc-pay').textContent = 'Pay ¥' + fees.grandTotal.toLocaleString();
+  document.getElementById('pay-total').textContent = formatUSD(fees.grandTotal);
+  document.getElementById('btn-cc-pay').textContent = 'Pay ' + formatUSD(fees.grandTotal);
 }
 
 // Credit card formatting
@@ -2001,7 +2002,7 @@ function buildReceiptScreen() {
       html += `
         <div class="receipt-row">
           <span>${item.emoji} ${item.name} ×${item.qty}</span>
-          <span class="r-price">¥${(item.price * item.qty).toLocaleString()}</span>
+          <span class="r-price">${formatUSD(item.price * item.qty)}</span>
         </div>
       `;
     });
@@ -2013,15 +2014,15 @@ function buildReceiptScreen() {
     <hr class="receipt-divider">
     <div class="receipt-row fee">
       <span>Items subtotal</span>
-      <span class="r-price">¥${fees.subtotal.toLocaleString()}</span>
+      <span class="r-price">${formatUSD(fees.subtotal)}</span>
     </div>
     <div class="receipt-row fee">
       <span>Locker fee (${fees.lockerLabel})</span>
-      <span class="r-price">¥${fees.lockerFee.toLocaleString()}</span>
+      <span class="r-price">${formatUSD(fees.lockerFee)}</span>
     </div>
     <div class="receipt-row total">
       <span>Order total</span>
-      <span class="r-price">¥${fees.grandTotal.toLocaleString()}</span>
+      <span class="r-price">${formatUSD(fees.grandTotal)}</span>
     </div>
     <div class="receipt-method">Payment: ${paymentMethod}</div>
   `;
