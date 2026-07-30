@@ -1117,6 +1117,19 @@ h3 {
   margin-bottom: 20px;
 }
 
+/* Demo guidance */
+.demo-note {
+  background: rgba(242, 169, 59, 0.10);
+  border: 1px solid rgba(242, 169, 59, 0.28);
+  border-radius: var(--radius-sm);
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+}
+.demo-note strong { color: var(--amber); }
+
 /* Scrollbar style */
 .phone-shell::-webkit-scrollbar { width: 4px; }
 .phone-shell::-webkit-scrollbar-track { background: transparent; }
@@ -1155,6 +1168,8 @@ h3 {
         <input type="text" id="inp-num" placeholder="e.g. 34" inputmode="numeric">
       </div>
     </div>
+
+    <p class="demo-note"><strong>Demo mode:</strong> You may select any area and enter any row and seat number. No real seat information is required.</p>
 
     <button class="btn-primary" id="btn-start" disabled>Start ordering from this seat</button>
   </div>
@@ -1251,6 +1266,8 @@ h3 {
       <h2>Payment</h2>
     </div>
 
+    <p class="demo-note"><strong>Demo payment:</strong> This is a demonstration only. Choose any payment option to continue; no payment will be processed.</p>
+
     <div class="payment-total">
       <div class="label">Amount due</div>
       <div class="amount" id="pay-total"></div>
@@ -1287,6 +1304,8 @@ h3 {
   <!-- ========== SCREEN 6: TRACKING ========== -->
   <div class="screen tracking-screen" id="screen-tracking">
     <h2 class="screen-title text-center">📦 Order status</h2>
+
+    <p class="demo-note"><strong>Demo controls:</strong> Use <em>10× speed</em> to accelerate the order progress, or select <em>Make ready now</em> to complete it immediately.</p>
 
     <div class="countdown-display">
       <div class="countdown-label">Estimated time until all items are ready</div>
