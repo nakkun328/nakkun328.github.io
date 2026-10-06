@@ -108,9 +108,10 @@ legend{padding:0;font-family:var(--mono);font-size:12px;letter-spacing:.06em;col
 .f{display:flex;flex-direction:column;gap:5px;min-width:0}
 .f>label,.f>.lab{font-size:13px;font-weight:500}
 .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-input[type=number],input[type=datetime-local],select{font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--axis);border-radius:6px;padding:6px 9px;min-width:0;max-width:100%}
+input[type=number],input[type=datetime-local],input[type=time],select,textarea{font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--axis);border-radius:6px;padding:6px 9px;min-width:0;max-width:100%}
 input[type=number]{width:5.4em;font-variant-numeric:tabular-nums}
 input[type=datetime-local]{width:100%}
+textarea{width:100%;font-size:13px;line-height:1.5;resize:vertical;min-height:4.6em}
 input:disabled{color:var(--muted);background:var(--plane)}
 input[type=range]{flex:1 1 120px;min-width:0;accent-color:var(--accent-fill)}
 .unit{font-size:13px;color:var(--ink-2)}
@@ -193,7 +194,7 @@ th:first-child,td:first-child{text-align:left}
 <div class="wrap">
   <header class="mast">
     <h1>Claude 配分メーター</h1>
-    <p>設定 › 使用量(Settings › Usage)の数値を入れると、今日使ってよい量とリセット権の使いどきを計算します。</p>
+    <p>設定 › 使用量 の画面を貼り付けるか数値を入れると、今日使ってよい量とリセット権の使いどきを計算します。</p>
   </header>
 
   <main class="board">
@@ -201,7 +202,7 @@ th:first-child,td:first-child{text-align:left}
       <div class="hero-head">
         <span class="eyebrow" id="heroEyebrow">今日の配分</span>
         <span class="pill" id="pacePill" data-tone="ok">ペース通り</span>
-        <span class="sample" id="sampleTag">サンプル値で表示中。「いまの数値」を自分のものに変えてください</span>
+        <span class="sample" id="sampleTag"></span>
       </div>
       <div class="hero-main">
         <p class="hero-fig"><span class="lead" id="heroLead">今日はあと</span><span class="big num" id="heroNum">0<small>%</small></span><span class="lead" id="heroTail">使える</span></p>
@@ -220,7 +221,14 @@ th:first-child,td:first-child{text-align:left}
     <form class="inputs" id="form" autocomplete="off">
       <div>
         <h2>いまの数値</h2>
-        <p class="hint">Claude の 設定 › 使用量 に出ている値をそのまま入れます。入力はこのブラウザにだけ保存されます。</p>
+        <p class="hint">Claude の 設定 › 使用量 の画面を貼り付けるか、下の欄に直接入れます。入力はこのブラウザにだけ保存されます。</p>
+      </div>
+
+      <div class="f">
+        <label for="paste">使用量の画面を貼り付けて読み取る</label>
+        <textarea id="paste" rows="3" placeholder="設定 › 使用量 の画面を全選択してコピーし、ここに貼り付け"></textarea>
+        <button type="button" class="ghost" id="parseBtn">読み取る</button>
+        <p class="note" id="parseMsg" role="status" hidden></p>
       </div>
 
       <fieldset>
@@ -243,8 +251,8 @@ th:first-child,td:first-child{text-align:left}
           <div class="row"><input type="number" id="s" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span></div>
         </div>
         <div class="f">
-          <span class="lab" id="sLab">回復まで</span>
-          <div class="row" role="group" aria-labelledby="sLab"><input type="number" id="sh" min="0" max="5" step="1" inputmode="numeric" aria-label="時間"><span class="unit">時間</span><input type="number" id="sm" min="0" max="59" step="5" inputmode="numeric" aria-label="分"><span class="unit">分</span></div>
+          <label for="sr">リセットされる時刻</label>
+          <div class="row"><input type="time" id="sr"></div>
         </div>
       </fieldset>
 
@@ -283,7 +291,7 @@ th:first-child,td:first-child{text-align:left}
         <div class="f">
           <label for="ex">有効期限</label>
           <input type="datetime-local" id="ex">
-          <p class="note">初期値は報告されている期限(10月22〜23日ごろ)の早い側です。自分の画面の表示に合わせてください。</p>
+          <p class="note">画面の「完全リセット」の有効期限を入れます。日付だけで時刻が出ない場合は、その日の 0:00 にしておくと安全です。</p>
         </div>
         <div class="f">
           <label for="shift">使ったあとの週間リセット日時</label>
@@ -358,8 +366,8 @@ th:first-child,td:first-child{text-align:left}
             <div><dt>消費ペース</dt><dd>今週の開始からいままでの利用時間で使用率を割った値です。手入力に切り替えると、その値で予測します。</dd></div>
             <div><dt>リセット権で戻る量</dt><dd>5時間セッションと週間の両方が満タンに戻る前提です。使った時点の使用率がそのまま戻る量になるので、高いときほど得です。</dd></div>
             <div><dt>計算に入れていないもの</dt><dd>5時間セッションの上限による中断、モデル別の週間上限、Anthropic 側の一斉リセットは予測に含めていません。</dd></div>
-            <div><dt>リセット権の仕様(2026年10月時点の報告)</dt><dd>Pro・Max・Team・Enterprise(席課金)に1回分。取り消し不可。ウェブ版かデスクトップ版の 設定 › 使用量 から使う。プランの解約やダウングレードで失効。</dd></div>
-            <div><dt>確認できていない点</dt><dd>期限の正確な日時と、使ったあとに週間リセット日時が動くかどうかは公式に確認できていません。左の欄で切り替えて試せます。</dd></div>
+            <div><dt>リセット権の仕様(2026年10月時点の報告)</dt><dd>画面上の名前は「完全リセット」。Pro・Max・Team・Enterprise(席課金)に1回分。取り消し不可。ウェブ版かデスクトップ版の 設定 › 使用量 から使う。プランの解約やダウングレードで失効。</dd></div>
+            <div><dt>確認できていない点</dt><dd>期限の正確な時刻と、使ったあとに週間リセット日時が動くかどうかは公式に確認できていません。入力欄で切り替えて試せます。画面にある「5時間リセット」は別枠の権利で、この計算には入れていません。</dd></div>
           </dl>
         </div>
         <div class="foot">
@@ -451,10 +459,33 @@ function compute(now,s){
   if(reset.best&&depletionAt&&Math.abs(reset.best.t-depletionAt)<=20*6e4){reset.best.t=depletionAt;reset.useT=depletionAt;}
   return{now,R,WS,c,W,left,total,elapsed,remain,todayRemain,perDay,autoRate,rate,ideal,delta:W-ideal,depletionAt,projRaw,days,focus,noActive,budget,stopAt,fns,reset};
 }
+function parseUsage(text,now){
+  const out={},pad=n=>String(n).padStart(2,'0'),WDJ='日月火水木金土';
+  const t=String(text||'').replace(/\u3000/g,' ').replace(/\uFF1A/g,':').replace(/\uFF05/g,'%').replace(/\uFF08/g,'(').replace(/\uFF09/g,')');
+  const PCT=/(\d+(?:\.\d+)?)\s*%\s*使用済み/;
+  const wm=/今週\s*(?:(\d{1,2})月(\d{1,2})日\s*)?(\d{1,2}):(\d{2})\s*(?:\(([日月火水木金土])曜?日?\))?\s*にリセット/.exec(t);
+  const si=t.indexOf('現在のセッション');
+  if(si>=0){const seg=t.slice(si,wm&&wm.index>si?wm.index:si+160);
+    const p=PCT.exec(seg);if(p)out.S=+p[1];
+    const r=/(\d{1,2}):(\d{2})\s*にリセット/.exec(seg);
+    if(r)out.sr=pad(+r[1])+':'+r[2];
+    else{const r2=/(?:(\d+)\s*時間)?\s*(?:(\d+)\s*分)?\s*(?:後に|で)リセット/.exec(seg);
+      if(r2&&(r2[1]||r2[2])){const d=new Date(now+((+r2[1]||0)*60+(+r2[2]||0))*6e4);out.sr=pad(d.getHours())+':'+pad(d.getMinutes());}}}
+  if(wm){const h=+wm[3],mi=+wm[4],d=new Date(now);
+    if(wm[1]){d.setMonth(+wm[1]-1,+wm[2]);d.setHours(h,mi,0,0);if(+d<=now)d.setFullYear(d.getFullYear()+1);}
+    else{d.setHours(h,mi,0,0);if(wm[5])d.setDate(d.getDate()+(WDJ.indexOf(wm[5])-d.getDay()+7)%7);if(+d<=now)d.setDate(d.getDate()+(wm[5]?7:1));}
+    out.R=+d;const a=wm.index+wm[0].length,p=PCT.exec(t.slice(a,a+80));if(p)out.W=+p[1];}
+  const ti=t.indexOf('完全リセット');
+  if(ti>=0){const end=t.indexOf('5時間リセット',ti),seg=t.slice(ti,end>ti?end:ti+80);
+    const e=/有効期限\s*:?\s*(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日(?:\s*(\d{1,2}):(\d{2}))?/.exec(seg);
+    if(e){const d=new Date(now);if(e[1])d.setFullYear(+e[1]);d.setMonth(+e[2]-1,+e[3]);d.setHours(e[4]?+e[4]:0,e[5]?+e[5]:0,0,0);if(!e[1]&&+d<now-DAY)d.setFullYear(d.getFullYear()+1);out.has=true;out.E=+d;out.eTime=!!e[4];}
+    else if(/ありません/.test(seg))out.has=false;}
+  return out;
+}
 /*ENDCORE*/
 
 (function(){
-const $=id=>document.getElementById(id),WD=['日','月','火','水','木','金','土'],KEY='haibun-meter-v1';
+const $=id=>document.getElementById(id),WD=['日','月','火','水','木','金','土'],KEY='haibun-meter-v2';
 const p2=n=>String(n).padStart(2,'0');
 const pct=v=>{v=Math.max(0,v);return v<9.95&&v>0?(Math.round(v*10)/10).toString():String(Math.round(v));};
 const hm=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes());};
@@ -472,34 +503,36 @@ for(let h=0;h<=24;h++){if(h<24)$('st').add(new Option(p2(h)+':00',h));if(h>0)$('
 
 function sampleState(now){
   const r=addDays(dayStart(now),3);r.setHours(10,0,0,0);if(+r-now<3.2*DAY)r.setDate(r.getDate()+1);
-  const ex=new Date(2026,9,22,23,59);
-  return{W:62,R:toIn(r),S:35,sh:2,sm:40,days:[1,1,1,1,1,1,1],start:9,end:24,auto:true,burn:15,has:+ex>now,E:toIn(ex),shift:'0',urgent:false,sample:true};
+  const ex=new Date(2026,9,23,0,0);
+  return{W:62,R:toIn(r),S:35,sr:hm(now+160*6e4),days:[1,1,1,1,1,1,1],start:9,end:24,auto:true,burn:15,has:+ex>now,E:toIn(ex),shift:'0',urgent:false,src:'sample'};
 }
 function apply(st){
-  $('w').value=st.W;$('wr').value=st.W;$('reset').value=st.R;$('s').value=st.S;$('sh').value=st.sh;$('sm').value=st.sm;
+  $('w').value=st.W;$('wr').value=st.W;$('reset').value=st.R;$('s').value=st.S;$('sr').value=st.sr||'';
   for(let i=0;i<7;i++)$('d'+i).checked=!!st.days[i];
   $('st').value=st.start;$('en').value=st.end;$('auto').checked=!!st.auto;$('burn').value=st.burn;
   $('has').checked=!!st.has;$('ex').value=st.E;$('shift').value=st.shift;$('urg').checked=!!st.urgent;
 }
-let isSample=true,rolled=false;
+let src='sample',rolled=false;
 function load(){
   const now=Date.now();let st=null;
   try{const raw=localStorage.getItem(KEY);if(raw){st=JSON.parse(raw);}}catch(e){st=null;}
-  if(!st||!st.R||!Array.isArray(st.days)){st=sampleState(now);}
-  else{isSample=!!st.sample;let r=+new Date(st.R);if(isFinite(r)&&r<=now){while(r<=now)r+=WEEK;st.R=toIn(r);rolled=!isSample;}}
-  apply(st);
+  if(!st||!st.R||!Array.isArray(st.days)||st.src!=='user'){st=sampleState(now);}
+  else{let r=+new Date(st.R);if(isFinite(r)&&r<=now){while(r<=now)r+=WEEK;st.R=toIn(r);rolled=true;}}
+  src=st.src;apply(st);
 }
 function read(){
   let start=+$('st').value,end=+$('en').value;if(end<=start){end=Math.min(24,start+1);$('en').value=end;}
   const days=[];for(let i=0;i<7;i++)days.push($('d'+i).checked);
   const anyDay=days.some(Boolean);
   const R=new Date($('reset').value),E=new Date($('ex').value);
-  return{W:clamp(num('w',0),0,100),R:isFinite(+R)?+R:Date.now()+3*DAY,S:clamp(num('s',0),0,100),sMin:clamp(num('sh',0),0,5)*60+clamp(num('sm',0),0,59),
+  const srv=$('sr').value,nowT=Date.now();let sMin=0,sStale=false;
+  if(/^\d\d:\d\d/.test(srv)){const d=new Date(nowT);d.setHours(+srv.slice(0,2),+srv.slice(3,5),0,0);if(+d<=nowT)d.setDate(d.getDate()+1);sMin=(+d-nowT)/6e4;if(sMin>300){sMin=0;sStale=true;}}
+  return{W:clamp(num('w',0),0,100),R:isFinite(+R)?+R:Date.now()+3*DAY,S:sStale?0:clamp(num('s',0),0,100),sMin,sStale,
     days:anyDay?days:[true,true,true,true,true,true,true],anyDay,start,end,auto:$('auto').checked,burn:Math.max(0,num('burn',0)),
     has:$('has').checked,E:isFinite(+E)?+E:0,shift:$('shift').value==='1',urgent:$('urg').checked,rawR:+R};
 }
 function save(){
-  const st={W:num('w',0),R:$('reset').value,S:num('s',0),sh:num('sh',0),sm:num('sm',0),days:[0,1,2,3,4,5,6].map(i=>$('d'+i).checked?1:0),start:+$('st').value,end:+$('en').value,auto:$('auto').checked,burn:num('burn',0),has:$('has').checked,E:$('ex').value,shift:$('shift').value,urgent:$('urg').checked,sample:isSample};
+  const st={W:num('w',0),R:$('reset').value,S:num('s',0),sr:$('sr').value,days:[0,1,2,3,4,5,6].map(i=>$('d'+i).checked?1:0),start:+$('st').value,end:+$('en').value,auto:$('auto').checked,burn:num('burn',0),has:$('has').checked,E:$('ex').value,shift:$('shift').value,urgent:$('urg').checked,src};
   try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}
 }
 
@@ -545,7 +578,7 @@ function flag(node,p,html){node.textContent='';html.forEach(x=>node.appendChild(
 
 function render(){
   const now=Date.now(),s=read(),M=compute(now,s),r=M.reset;
-  $('sampleTag').hidden=!isSample;
+  const tag=$('sampleTag');tag.hidden=src==='user';tag.textContent='サンプル値で表示中。使用量の画面を貼り付けるか、数値を入れてください';
   // input side-effects
   const rn=$('resetNote');
   if(isFinite(s.rawR)&&s.rawR-now>WEEK){rn.hidden=false;rn.textContent='7日より先の日時です。週間リセットは7日ごとなので、'+dt(M.R)+' として計算しています。';}
@@ -584,7 +617,7 @@ function render(){
     {k:'消費ペース',v:pct(M.rate*M.perDay)+'% / 日',n:s.auto?'今週の実績から算出':'手入力の値'},
     {k:'上限に届く見込み',v:M.left<=0?'到達済み':M.depletionAt?rel(M.depletionAt,now):'届かない',n:M.depletionAt?'リセットの '+dur((M.R-M.depletionAt)/H)+' 前':'リセット時の予測 '+pct(Math.min(100,M.projRaw))+'%'}]);
   const sl=$('sessLine');
-  sl.textContent=s.S>=100?'5時間セッションは上限に達しています。あと '+dur(s.sMin/60)+' で回復します。':'5時間セッションは '+pct(s.S)+'% 使用中。'+(s.sMin>0?'あと '+dur(s.sMin/60)+' で回復します。':'')+'セッションの上限に当たっても、週間の残りは減りません。';
+  sl.textContent=s.sStale?'入力されたリセット時刻を過ぎているので、5時間セッションは回復済みとして扱っています。':s.S>=100?'5時間セッションは上限に達しています。あと '+dur(s.sMin/60)+' で回復します。':'5時間セッションは '+pct(s.S)+'% 使用中。'+(s.sMin>0?'あと '+dur(s.sMin/60)+' で回復します。':'')+'セッションの上限に当たっても、週間の残りは減りません。';
 
   // pace chart
   const fn=M.fns,pt2=$('paceText');
@@ -663,11 +696,33 @@ load();
 const form=$('form');
 form.addEventListener('submit',e=>e.preventDefault());
 form.addEventListener('input',e=>{
+  if(e.target.id==='paste')return;
   if(e.target.id==='wr')$('w').value=$('wr').value;if(e.target.id==='w')$('wr').value=clamp(num('w',0),0,100);
   if(e.target.id==='reset'||e.target.id==='w')rolled=false;
   if(e.target.id==='auto'&&!$('auto').checked)$('burn').value=$('burn').value||15;
-  isSample=false;save();render();});
-$('toSample').addEventListener('click',()=>{isSample=true;rolled=false;apply(sampleState(Date.now()));save();render();});
+  src='user';save();render();});
+$('toSample').addEventListener('click',()=>{src='sample';rolled=false;apply(sampleState(Date.now()));save();render();});
+function doParse(){
+  const now=Date.now(),o=parseUsage($('paste').value,now),msg=$('parseMsg'),got=[],miss=[];
+  if(o.W!=null){$('w').value=o.W;$('wr').value=o.W;}
+  if(o.R!=null)$('reset').value=toIn(o.R);
+  if(o.S!=null)$('s').value=o.S;
+  if(o.sr)$('sr').value=o.sr;
+  if(o.has!=null)$('has').checked=o.has;
+  if(o.E!=null)$('ex').value=toIn(o.E);
+  if(o.W!=null||o.R!=null)got.push('週間 '+(o.W!=null?o.W+'%':'')+(o.R!=null?'・リセット '+dt(o.R):''));
+  if(o.S!=null||o.sr)got.push('セッション '+(o.S!=null?o.S+'%':'')+(o.sr?'・リセット '+o.sr:''));
+  if(o.has===true)got.push('完全リセット権あり・期限 '+(o.eTime?dt(o.E):md(o.E)));
+  if(o.has===false)got.push('完全リセット権なし');
+  if(o.W==null)miss.push('週間の使用率');if(o.R==null)miss.push('週間リセット日時');if(o.S==null)miss.push('セッションの使用率');if(!o.sr)miss.push('セッションのリセット時刻');if(o.has==null)miss.push('リセット権');
+  msg.hidden=false;
+  if(!got.length){msg.className='note alert';msg.textContent='読み取れませんでした。設定 › 使用量 の画面全体を選択してコピーし、貼り付けてください(日本語表示の画面に対応)。';return;}
+  msg.className='note'+(miss.length?' alert':'');
+  msg.textContent=hm(now)+' に読み取りました。'+got.join(' / ')+'。'+(o.has&&!o.eTime?'期限は日付だけなので、安全側でその日の 0:00 として扱います。':'')+(miss.length?'読み取れなかった項目: '+miss.join('、')+'。':'');
+  $('paste').value='';src='user';rolled=false;save();render();
+}
+$('parseBtn').addEventListener('click',doParse);
+$('paste').addEventListener('paste',()=>setTimeout(doParse,0));
 render();
 let rw=0;new ResizeObserver(()=>{const w=$('chPace').clientWidth;if(w&&w!==rw){rw=w;charts.forEach((cfg,host)=>{if(host.clientWidth)lineChart(host,cfg);});}}).observe($('chPace'));
 setInterval(render,60000);
