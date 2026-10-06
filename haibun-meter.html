@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Claude 配分メーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: instrument panel. Readings go in on the left, the verdict and its charts read out on the right; one column on a phone, verdict first. */
+:root{
+  --plane:#eef1f5; --surface:#fcfdfe; --ink:#0f1620; --ink-2:#4a5463; --muted:#6f7987;
+  --grid:#e3e7ec; --axis:#c2c9d2; --border:rgba(15,22,32,.12); --field:#ffffff;
+  --s1:#2a78d6; --s1-soft:#86b6ef; --s2:#eb6834; --ref:#8a93a0;
+  --accent-fill:#1c5cab; --on-accent:#ffffff;
+  --good:#0ca30c; --warn:#fab219; --crit:#d03b3b;
+  --sans:"IBM Plex Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --plane:#0d1014; --surface:#161a20; --ink:#f2f5f8; --ink-2:#bcc4cf; --muted:#8f98a5;
+    --grid:#252b33; --axis:#39414c; --border:rgba(255,255,255,.12); --field:#0f1318;
+    --s1:#3987e5; --s1-soft:#1c5cab; --s2:#d95926; --ref:#8a93a0;
+    --accent-fill:#3987e5; --on-accent:#0b1220;
+    --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --plane:#0d1014; --surface:#161a20; --ink:#f2f5f8; --ink-2:#bcc4cf; --muted:#8f98a5;
+  --grid:#252b33; --axis:#39414c; --border:rgba(255,255,255,.12); --field:#0f1318;
+  --s1:#3987e5; --s1-soft:#1c5cab; --s2:#d95926; --ref:#8a93a0;
+  --accent-fill:#3987e5; --on-accent:#0b1220;
+  --good:#0ca30c; --warn:#fab219; --crit:#d03b3b; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--plane);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.65;-webkit-text-size-adjust:100%}
+.wrap{max-width:1180px;margin-inline:auto;padding-inline:20px;padding-block:28px 56px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3,p,ul,ol,dl,dd,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+h1,h2,h3{text-wrap:balance;line-height:1.35}
+a{color:var(--s1);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--s1);outline-offset:2px;border-radius:4px}
+.num{font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}
+
+/* masthead */
+.mast{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px}
+.mast h1{font-size:20px;font-weight:700;letter-spacing:.01em}
+.mast p{color:var(--ink-2);font-size:13px;max-width:62ch}
+
+/* grid */
+.board{display:grid;gap:28px;grid-template-columns:minmax(0,1fr);grid-template-areas:"hero" "in" "rest"}
+.hero{grid-area:hero;min-width:0}
+.inputs{grid-area:in;min-width:0}
+.results{grid-area:rest;min-width:0;container-type:inline-size;display:flex;flex-direction:column;gap:36px}
+@media (min-width:980px){
+  .board{grid-template-columns:340px minmax(0,1fr);grid-template-areas:"in hero" "in rest";grid-template-rows:auto 1fr;column-gap:36px}
+  .inputs{align-self:start;position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - 32px);overflow:auto;padding-bottom:0}
+  .board .inputs .more{display:block;position:sticky;bottom:0;height:30px;margin-top:-12px;flex:none;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--surface) 75%)}
+}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:18px;container-type:inline-size}
+.hero-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.sample{font-size:12px;color:var(--ink-2);border:1px dashed var(--axis);border-radius:999px;padding:2px 10px}
+.hero-main{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 28px}
+.hero-fig{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.hero-fig .lead{font-size:16px;font-weight:500;color:var(--ink-2)}
+.hero-fig .big{font-size:clamp(56px,13cqw,88px);font-weight:700;line-height:1;letter-spacing:-.02em}
+.hero-fig .big small{font-size:.42em;font-weight:600;margin-left:2px;letter-spacing:0}
+.hero-sub{font-size:16px;max-width:36em;flex:1 1 260px;min-width:0}
+.hero-sub b{font-weight:700}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:3px 12px 3px 9px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--ink)}
+.pill::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--ref);flex:none}
+.pill[data-tone="good"]::before{background:var(--good)}
+.pill[data-tone="warn"]::before{background:var(--warn);border-radius:2px;transform:rotate(45deg)}
+.pill[data-tone="crit"]::before{background:var(--crit);border-radius:1px}
+.pill[data-tone="go"]::before{background:var(--s1)}
+
+/* the usage meter with today's stop line */
+.meter{position:relative;padding-block:26px 40px}
+.track{position:relative;height:14px;border-radius:7px;background:color-mix(in srgb,var(--mfill) 20%,var(--plane));--mfill:var(--s1)}
+.fill{position:absolute;inset:0 auto 0 0;border-radius:7px;background:var(--mfill);min-width:3px}
+.mk{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);border-radius:1px;transform:translateX(-1px)}
+.mk.ideal{background:var(--ref);top:-3px;bottom:-9px}
+.flag{position:absolute;font-size:12px;white-space:nowrap;color:var(--ink-2);line-height:1.2}
+.flag b{color:var(--ink);font-weight:600}
+.flag.top{top:0}
+.flag.bot{top:54px}
+.scale{position:absolute;left:0;right:0;top:42px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--grid);border:1px solid var(--grid);border-radius:10px;overflow:hidden}
+.tile{background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile dt{font-size:12px;color:var(--ink-2)}
+.tile dd.v{font-size:19px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.tile dd.n{font-size:12px;color:var(--muted);line-height:1.45}
+@container (min-width:640px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* inputs */
+.inputs{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:20px}
+.inputs h2{font-size:15px;font-weight:700}
+.inputs .more{display:none}
+.inputs .hint{font-size:12px;color:var(--ink-2);line-height:1.55}
+fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+legend{padding:0;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f>label,.f>.lab{font-size:13px;font-weight:500}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+input[type=number],input[type=datetime-local],select{font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--axis);border-radius:6px;padding:6px 9px;min-width:0;max-width:100%}
+input[type=number]{width:5.4em;font-variant-numeric:tabular-nums}
+input[type=datetime-local]{width:100%}
+input:disabled{color:var(--muted);background:var(--plane)}
+input[type=range]{flex:1 1 120px;min-width:0;accent-color:var(--accent-fill)}
+.unit{font-size:13px;color:var(--ink-2)}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.days label{position:relative;display:block}
+.days input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.days span{display:block;text-align:center;font-size:13px;font-weight:500;padding:6px 0;border-radius:6px;border:1px solid var(--axis);color:var(--muted);background:var(--field)}
+.days input:checked+span{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--on-accent)}
+.days input:focus-visible+span{outline:2px solid var(--s1);outline-offset:2px}
+.check{display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer}
+.check input{margin:4px 0 0;accent-color:var(--accent-fill);flex:none}
+.note{font-size:12px;color:var(--ink-2);line-height:1.5}
+.note.alert{color:var(--ink);border-left:3px solid var(--warn);padding-left:8px}
+button.ghost{font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px solid var(--axis);border-radius:6px;padding:6px 12px;cursor:pointer;align-self:flex-start}
+button.ghost:hover{background:var(--plane)}
+hr{border:0;border-top:1px solid var(--grid);margin:0;width:100%}
+
+/* result sections */
+.sec{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sec-head{display:flex;flex-direction:column;gap:4px}
+.sec-head h2{font-size:18px;font-weight:700}
+.sec-head p{font-size:13px;color:var(--ink-2);max-width:66ch}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h3{font-size:14px;font-weight:600}
+.panel .cap{font-size:12px;color:var(--ink-2);margin-top:-8px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12px;color:var(--ink-2)}
+.legend li{display:flex;align-items:center;gap:7px}
+.key{width:18px;height:0;border-top:2px solid var(--k);flex:none}
+.key.dash{border-top-style:dashed}
+.chart{position:relative;min-width:0}
+.chart svg{display:block;max-width:100%;border-radius:6px}
+.chart .grid{stroke:var(--grid);stroke-width:1}
+.chart .axis{stroke:var(--axis);stroke-width:1}
+.chart .tick{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.chart .vl{stroke:var(--ink-2);stroke-width:1}
+.chart .vt{font-size:11px;fill:var(--ink-2);font-weight:500}
+.chart .ml{font-size:12px;fill:var(--ink);font-weight:600;paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.chart .cross{stroke:var(--ink-2);stroke-width:1}
+.tip{position:absolute;top:6px;z-index:2;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.14);min-width:150px;display:flex;flex-direction:column;gap:3px}
+.tip .th{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tip .tr{display:flex;align-items:center;gap:7px;color:var(--ink-2)}
+.tip .tr b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;min-width:3.2em}
+details.tbl summary{font-size:12px;color:var(--ink-2);cursor:pointer;width:fit-content}
+.tscroll{overflow-x:auto;margin-top:8px}
+table{border-collapse:collapse;font-size:13px;width:100%}
+th,td{text-align:right;padding:6px 10px;border-bottom:1px solid var(--grid);white-space:nowrap;font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--ink-2);font-size:12px}
+th:first-child,td:first-child{text-align:left}
+
+/* day bars */
+.bars{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;align-items:end}
+.bar{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;padding:4px 0;border-radius:6px}
+.bar:hover,.bar:focus-visible{background:var(--plane)}
+.bar .bv{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.bar .col{width:100%;height:120px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--axis)}
+.bar .col i{display:block;width:min(24px,70%);background:var(--s1-soft);border-radius:4px 4px 0 0;min-height:2px}
+.bar.today .col i{background:var(--s1)}
+.bar .bd{font-size:12px;color:var(--ink-2);line-height:1.3;text-align:center}
+.bar.today .bd{color:var(--ink);font-weight:600}
+.bar .bt{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;line-height:1.3}
+
+/* reset verdict */
+.verdict{display:flex;flex-direction:column;gap:10px}
+.verdict h3{font-size:clamp(20px,4.6cqw,26px);font-weight:700;line-height:1.35}
+.verdict p{font-size:15px;max-width:60ch}
+.why{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2);max-width:68ch}
+.why li{padding-left:14px;position:relative}
+.why li::before{content:"";position:absolute;left:0;top:.75em;width:6px;height:1px;background:var(--muted)}
+.facts{display:grid;grid-template-columns:minmax(0,1fr);gap:8px 28px;font-size:13px}
+.facts div{display:flex;flex-direction:column;gap:1px}
+.facts dt{font-weight:600}
+.facts dd{color:var(--ink-2)}
+@container (min-width:640px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.foot{font-size:12px;color:var(--ink-2);display:flex;flex-direction:column;gap:6px;max-width:80ch}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .25s ease}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <h1>Claude 配分メーター</h1>
+    <p>設定 › 使用量(Settings › Usage)の数値を入れると、今日使ってよい量とリセット権の使いどきを計算します。</p>
+  </header>
+
+  <main class="board">
+    <section class="hero" aria-live="polite">
+      <div class="hero-head">
+        <span class="eyebrow" id="heroEyebrow">今日の配分</span>
+        <span class="pill" id="pacePill" data-tone="ok">ペース通り</span>
+        <span class="sample" id="sampleTag">サンプル値で表示中。「いまの数値」を自分のものに変えてください</span>
+      </div>
+      <div class="hero-main">
+        <p class="hero-fig"><span class="lead" id="heroLead">今日はあと</span><span class="big num" id="heroNum">0<small>%</small></span><span class="lead" id="heroTail">使える</span></p>
+        <p class="hero-sub" id="heroSub"></p>
+      </div>
+      <div class="meter" id="meter" role="img" aria-label="週間メーター">
+        <span class="flag top" id="flagStop"></span>
+        <div class="track" id="track"><div class="fill" id="fill"></div><i class="mk ideal" id="mkIdeal"></i><i class="mk" id="mkStop"></i></div>
+        <div class="scale" aria-hidden="true"><span>0</span><span>50</span><span>100%</span></div>
+        <span class="flag bot" id="flagIdeal"></span>
+      </div>
+      <dl class="tiles" id="tiles"></dl>
+      <p class="note" id="sessLine"></p>
+    </section>
+
+    <form class="inputs" id="form" autocomplete="off">
+      <div>
+        <h2>いまの数値</h2>
+        <p class="hint">Claude の 設定 › 使用量 に出ている値をそのまま入れます。入力はこのブラウザにだけ保存されます。</p>
+      </div>
+
+      <fieldset>
+        <legend>週間の上限</legend>
+        <div class="f">
+          <label for="w">使用率</label>
+          <div class="row"><input type="number" id="w" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span><input type="range" id="wr" min="0" max="100" step="1" aria-label="週間の使用率"></div>
+        </div>
+        <div class="f">
+          <label for="reset">次の週間リセット日時</label>
+          <input type="datetime-local" id="reset">
+          <p class="note alert" id="resetNote" hidden></p>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>5時間セッション</legend>
+        <div class="f">
+          <label for="s">使用率</label>
+          <div class="row"><input type="number" id="s" min="0" max="100" step="1" inputmode="decimal"><span class="unit">%</span></div>
+        </div>
+        <div class="f">
+          <span class="lab" id="sLab">回復まで</span>
+          <div class="row" role="group" aria-labelledby="sLab"><input type="number" id="sh" min="0" max="5" step="1" inputmode="numeric" aria-label="時間"><span class="unit">時間</span><input type="number" id="sm" min="0" max="59" step="5" inputmode="numeric" aria-label="分"><span class="unit">分</span></div>
+        </div>
+      </fieldset>
+
+      <hr>
+
+      <fieldset>
+        <legend>使い方</legend>
+        <div class="f">
+          <span class="lab" id="dLab">Claude を使う曜日</span>
+          <div class="days" role="group" aria-labelledby="dLab">
+            <label><input type="checkbox" id="d1"><span>月</span></label>
+            <label><input type="checkbox" id="d2"><span>火</span></label>
+            <label><input type="checkbox" id="d3"><span>水</span></label>
+            <label><input type="checkbox" id="d4"><span>木</span></label>
+            <label><input type="checkbox" id="d5"><span>金</span></label>
+            <label><input type="checkbox" id="d6"><span>土</span></label>
+            <label><input type="checkbox" id="d0"><span>日</span></label>
+          </div>
+        </div>
+        <div class="f">
+          <span class="lab" id="hLab">使う時間帯</span>
+          <div class="row" role="group" aria-labelledby="hLab"><select id="st" aria-label="開始時刻"></select><span class="unit">から</span><select id="en" aria-label="終了時刻"></select><span class="unit">まで</span></div>
+        </div>
+        <div class="f">
+          <label for="burn">これからの消費ペース</label>
+          <div class="row"><input type="number" id="burn" min="0" max="100" step="1" inputmode="decimal"><span class="unit">% / 日</span></div>
+          <label class="check"><input type="checkbox" id="auto"><span>今週ここまでの実績から自動で出す</span></label>
+        </div>
+      </fieldset>
+
+      <hr>
+
+      <fieldset>
+        <legend>リセット権</legend>
+        <label class="check"><input type="checkbox" id="has"><span>未使用のリセット権を持っている</span></label>
+        <div class="f">
+          <label for="ex">有効期限</label>
+          <input type="datetime-local" id="ex">
+          <p class="note">初期値は報告されている期限(10月22〜23日ごろ)の早い側です。自分の画面の表示に合わせてください。</p>
+        </div>
+        <div class="f">
+          <label for="shift">使ったあとの週間リセット日時</label>
+          <select id="shift"><option value="0">変わらない(初期設定)</option><option value="1">使った時点から7日後にずれる</option></select>
+        </div>
+        <label class="check"><input type="checkbox" id="urg"><span>いま止まると困る作業がある</span></label>
+      </fieldset>
+
+      <button type="button" class="ghost" id="toSample">サンプル値に戻す</button>
+      <div class="more" aria-hidden="true"></div>
+    </form>
+
+    <div class="results">
+      <section class="sec">
+        <div class="sec-head">
+          <h2>今週のペース</h2>
+          <p id="paceText"></p>
+        </div>
+        <div class="panel">
+          <h3>週間メーターの進み方</h3>
+          <ul class="legend">
+            <li><i class="key" style="--k:var(--ref)"></i>持続可能ペース(リセット時にちょうど100%)</li>
+            <li><i class="key" style="--k:var(--s2)"></i>このままのペース(点線は予測)</li>
+            <li><i class="key" style="--k:var(--s1)"></i>おすすめ配分</li>
+          </ul>
+          <div class="chart" id="chPace"></div>
+          <details class="tbl"><summary>表で見る</summary><div class="tscroll"><table id="tbPace"></table></div></details>
+        </div>
+        <div class="panel">
+          <h3>日ごとの配分</h3>
+          <p class="cap">棒は、その日に使ってよい量。下の数字は、その日の終わりに週間メーターが指す値です。</p>
+          <div class="bars" id="bars"></div>
+        </div>
+      </section>
+
+      <section class="sec" id="resetSec">
+        <div class="sec-head">
+          <h2>リセット権の使いどき</h2>
+          <p>いまの消費ペースが続くと仮定して、使う時点を15分刻みで総当たりし、上限で止まる時間がいちばん短くなる時点を探します。</p>
+        </div>
+        <div class="panel verdict">
+          <span class="pill" id="rPill" data-tone="ok">判定</span>
+          <h3 id="rHead"></h3>
+          <p id="rSub"></p>
+          <ul class="why" id="rWhy"></ul>
+        </div>
+        <dl class="tiles" id="rTiles"></dl>
+        <div class="panel" id="rCurveP">
+          <h3>使う時点ごとの、取り戻せる利用時間</h3>
+          <p class="cap">横軸は押す日時、縦軸は使わなかった場合と比べて減らせる停止時間です。線が高い時点ならどこで押しても計算上は同じで、その中でいちばん遅い時点(上限に達する瞬間)をベストとしています。谷は、上限で止まったまま待った区間と、週間リセット直後で戻る量が少ない区間です。</p>
+          <div class="chart" id="chCurve"></div>
+        </div>
+        <div class="panel" id="rSimP">
+          <h3>週間メーターの見通し</h3>
+          <ul class="legend">
+            <li><i class="key" style="--k:var(--s2)"></i>使わない場合</li>
+            <li><i class="key" style="--k:var(--s1)"></i><span id="simKey">ベストの時点で使う場合</span></li>
+          </ul>
+          <div class="chart" id="chSim"></div>
+          <p class="cap" style="margin-top:0">線が100%に張り付いている区間が、上限で止まっている時間です。</p>
+          <details class="tbl"><summary>表で見る</summary><div class="tscroll"><table id="tbSim"></table></div></details>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-head">
+          <h2>計算のしくみと前提</h2>
+        </div>
+        <div class="panel">
+          <dl class="facts">
+            <div><dt>今日の配分</dt><dd>週間の残りを、次のリセットまでに残っている利用時間(選んだ曜日と時間帯)で割り、今日の残り時間ぶんを出しています。</dd></div>
+            <div><dt>消費ペース</dt><dd>今週の開始からいままでの利用時間で使用率を割った値です。手入力に切り替えると、その値で予測します。</dd></div>
+            <div><dt>リセット権で戻る量</dt><dd>5時間セッションと週間の両方が満タンに戻る前提です。使った時点の使用率がそのまま戻る量になるので、高いときほど得です。</dd></div>
+            <div><dt>計算に入れていないもの</dt><dd>5時間セッションの上限による中断、モデル別の週間上限、Anthropic 側の一斉リセットは予測に含めていません。</dd></div>
+            <div><dt>リセット権の仕様(2026年10月時点の報告)</dt><dd>Pro・Max・Team・Enterprise(席課金)に1回分。取り消し不可。ウェブ版かデスクトップ版の 設定 › 使用量 から使う。プランの解約やダウングレードで失効。</dd></div>
+            <div><dt>確認できていない点</dt><dd>期限の正確な日時と、使ったあとに週間リセット日時が動くかどうかは公式に確認できていません。左の欄で切り替えて試せます。</dd></div>
+          </dl>
+        </div>
+        <div class="foot">
+          <p>Anthropic とは無関係の非公式ツールです。このページは実際の使用量を読み取りません。計算に使うのは入力した数値だけです。</p>
+          <p>出典: <a href="https://weel.co.jp/?p=131089" target="_blank" rel="noopener">WEEL「Claudeのリセット権とは?」</a> / <a href="https://hashout.jp/?p=11248" target="_blank" rel="noopener">hashout「Claude有料プランの上限が無料で全回復」</a> / <a href="https://gori.me/?p=170552" target="_blank" rel="noopener">gori.me「Claudeの上限リセット権」</a> / <a href="https://support.claude.com/en/articles/12466728" target="_blank" rel="noopener">Claude ヘルプ「Usage limit warnings and errors」</a></p>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+/*CORE*/
+const H=36e5,DAY=864e5,WEEK=7*DAY,DT=15*6e4;
+function dayStart(t){const x=new Date(t);x.setHours(0,0,0,0);return x;}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function activeHours(a,b,c){a=+a;b=+b;if(!(b>a))return 0;let sum=0;for(let d=dayStart(a);+d<b;d=addDays(d,1)){if(!c.days[d.getDay()])continue;const lo=Math.max(a,+d+c.start*H),hi=Math.min(b,+d+c.end*H);if(hi>lo)sum+=hi-lo;}return sum/H;}
+function advanceActive(a,hrs,c){a=+a;let d=dayStart(a);for(let n=0;n<120;n++,d=addDays(d,1)){if(!c.days[d.getDay()])continue;const lo=Math.max(a,+d+c.start*H),hi=+d+c.end*H;if(hi<=lo)continue;const len=(hi-lo)/H;if(hrs<=len)return lo+hrs*H;hrs-=len;}return null;}
+function isActive(t,c){const d=new Date(t);if(!c.days[d.getDay()])return false;const h=(t-dayStart(t))/H;return h>=c.start&&h<c.end;}
+
+function resetPlan(now,s,R,rate,c){
+  const E=+s.E;
+  if(!s.has)return{kind:'none'};
+  if(!(E>now))return{kind:'expired',E};
+  let Ra=R;while(Ra<E)Ra+=WEEK;
+  const horizon=Math.min(Ra+(s.shift?WEEK:0),now+42*DAY);
+  const steps=Math.max(1,Math.ceil((horizon-now)/DT));
+  const active=new Uint8Array(steps);
+  for(let i=0;i<steps;i++)active[i]=isActive(now+i*DT,c)?1:0;
+  const nC=Math.max(1,Math.min(steps,Math.ceil((E-now)/DT)));
+  const inc=rate*DT/H;
+  const sim=(use,rec)=>{let m=s.W,next=R,blocked=0;
+    for(let i=0;i<steps;i++){const t=now+i*DT;while(t>=next){m=0;next+=WEEK;}
+      if(i===use){m=0;if(s.shift)next=t+WEEK;}
+      if(rec)rec[i]=m;
+      if(active[i]){if(m>=100-1e-9)blocked+=DT;else m=Math.min(100,m+inc);}}
+    return blocked/H;};
+  const recNone=new Float32Array(steps),bNone=sim(-1,recNone);
+  const stride=Math.max(1,Math.ceil(nC/360)),val=i=>Math.max(0,bNone-sim(i,null));
+  const curve=[];let max=0;
+  for(let i=0;i<nC;i+=stride){const sv=val(i);curve.push([i,sv]);if(sv>max)max=sv;}
+  let lastI=nC-1;for(let i=nC-1;i>=0;i--){if(active[i]){lastI=i;break;}}
+  const EPS=0.26;let bi=-1;
+  if(max>=EPS){let k=curve.findIndex(p=>p[1]>=max-0.01);while(k+1<curve.length&&curve[k+1][1]>=max-0.01)k++;bi=curve[k][0];
+    const top=Math.min(nC-1,bi+stride-1);
+    for(let i=bi+1;i<=top;i++){const sv=val(i);if(sv<max-0.01)break;bi=i;if(sv>max)max=sv;}
+    if(bi!==curve[k][0])curve.splice(k+1,0,[bi,max]);}
+  let kind=max<EPS?'hold':(bi*DT<20*6e4?'now':'wait');
+  const useI=bi>=0?bi:lastI;
+  const recPlan=new Float32Array(steps),bPlan=sim(useI,recPlan);
+  const savedNow=curve.length?curve[0][1]:0;
+  const blockedNow=s.S>=100||s.W>=100;
+  if(blockedNow&&kind!=='now'&&s.urgent)kind='urgent';
+  let nResets=0;for(let r=R;r<E;r+=WEEK)nResets++;
+  return{kind,E,bNone,bPlan,savedNow,bNow:bNone-savedNow,max,
+    best:bi>=0?{t:now+bi*DT,saved:max,meter:recNone[bi]}:null,
+    last:{t:now+lastI*DT,meter:recNone[lastI]},useT:now+useI*DT,useMeter:recNone[useI],
+    curve:curve.map(p=>[now+p[0]*DT,p[1]]),recNone,recPlan,steps,horizon,nResets,blockedNow,sessBlocked:s.S>=100};
+}
+
+function compute(now,s){
+  now=+now;const c={days:s.days,start:s.start,end:s.end};
+  let R=+s.R;while(R<=now)R+=WEEK;while(R-now>WEEK)R-=WEEK;
+  const WS=R-WEEK,AH=(a,b)=>activeHours(a,b,c);
+  const total=AH(WS,R),elapsed=AH(WS,now),remain=AH(now,R);
+  const W=s.W,left=Math.max(0,100-W);
+  const todayEnd=Math.min(R,+addDays(dayStart(now),1));
+  const todayRemain=AH(now,todayEnd);
+  const perDay=s.end-s.start;
+  const autoRate=(elapsed>=2&&W>0)?W/elapsed:(total>0?100/total:0);
+  const rate=s.auto?autoRate:(perDay>0?s.burn/perDay:0);
+  const ideal=total>0?elapsed/total*100:0;
+  const need=rate>0?left/rate:Infinity;
+  const depletionAt=(left>0&&need<remain-1e-6)?advanceActive(now,need,c):null;
+  const projRaw=W+rate*remain;
+  const days=[];let cum=W;
+  for(let d=dayStart(now);+d<R;d=addDays(d,1)){const hrs=AH(Math.max(now,+d),Math.min(R,+addDays(d,1)));const pct=remain>0?left*hrs/remain:0;cum+=pct;days.push({date:+d,hours:hrs,pct,cum:Math.min(100,cum),today:+d===+dayStart(now)});}
+  let focus=days[0]||{date:+dayStart(now),hours:0,pct:left,cum:100,today:true};
+  if(remain>0&&todayRemain<0.05){const nx=days.find(x=>x.hours>0.05);if(nx)focus=nx;}
+  const noActive=!(remain>0);
+  const budget=noActive?left:focus.pct;
+  const stopAt=noActive?100:focus.cum;
+  const fns={
+    sustain:t=>total>0?AH(WS,t)/total*100:0,
+    actual:t=>t>now?null:(elapsed>0?W*AH(WS,t)/elapsed:W*(t-WS)/Math.max(1,now-WS)),
+    proj:t=>t<now?null:Math.min(100,W+rate*AH(now,t)),
+    rec:t=>t<now?null:(remain>0?W+left*AH(now,t)/remain:W)};
+  const reset=resetPlan(now,s,R,rate,c);
+  if(reset.best&&depletionAt&&Math.abs(reset.best.t-depletionAt)<=20*6e4){reset.best.t=depletionAt;reset.useT=depletionAt;}
+  return{now,R,WS,c,W,left,total,elapsed,remain,todayRemain,perDay,autoRate,rate,ideal,delta:W-ideal,depletionAt,projRaw,days,focus,noActive,budget,stopAt,fns,reset};
+}
+/*ENDCORE*/
+
+(function(){
+const $=id=>document.getElementById(id),WD=['日','月','火','水','木','金','土'],KEY='haibun-meter-v1';
+const p2=n=>String(n).padStart(2,'0');
+const pct=v=>{v=Math.max(0,v);return v<9.95&&v>0?(Math.round(v*10)/10).toString():String(Math.round(v));};
+const hm=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes());};
+const md=t=>{const d=new Date(t);return (d.getMonth()+1)+'/'+d.getDate()+'('+WD[d.getDay()]+')';};
+const dt=t=>md(t)+' '+hm(t);
+function rel(t,now){const a=+dayStart(t),b=+dayStart(now);if(a===b)return '今日 '+hm(t);if(a===+addDays(new Date(b),1))return '明日 '+hm(t);return dt(t);}
+function dayName(t,now){const a=+dayStart(t),b=+dayStart(now);return a===b?'今日':a===+addDays(new Date(b),1)?'明日':md(t);}
+function dur(h){if(!(h>0))return '0分';const m=Math.round(h*60);if(m<60)return m+'分';if(m<48*60){const mm=m%60;return Math.floor(m/60)+'時間'+(mm?mm+'分':'');}const hh=Math.round(m/60);return Math.floor(hh/24)+'日'+(hh%24?hh%24+'時間':'');}
+const toIn=t=>{const d=new Date(t);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+'T'+p2(d.getHours())+':'+p2(d.getMinutes());};
+const num=(id,def)=>{const v=parseFloat($(id).value);return isFinite(v)?v:def;};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
+
+for(let h=0;h<=24;h++){if(h<24)$('st').add(new Option(p2(h)+':00',h));if(h>0)$('en').add(new Option(p2(h)+':00',h));}
+
+function sampleState(now){
+  const r=addDays(dayStart(now),3);r.setHours(10,0,0,0);if(+r-now<3.2*DAY)r.setDate(r.getDate()+1);
+  const ex=new Date(2026,9,22,23,59);
+  return{W:62,R:toIn(r),S:35,sh:2,sm:40,days:[1,1,1,1,1,1,1],start:9,end:24,auto:true,burn:15,has:+ex>now,E:toIn(ex),shift:'0',urgent:false,sample:true};
+}
+function apply(st){
+  $('w').value=st.W;$('wr').value=st.W;$('reset').value=st.R;$('s').value=st.S;$('sh').value=st.sh;$('sm').value=st.sm;
+  for(let i=0;i<7;i++)$('d'+i).checked=!!st.days[i];
+  $('st').value=st.start;$('en').value=st.end;$('auto').checked=!!st.auto;$('burn').value=st.burn;
+  $('has').checked=!!st.has;$('ex').value=st.E;$('shift').value=st.shift;$('urg').checked=!!st.urgent;
+}
+let isSample=true,rolled=false;
+function load(){
+  const now=Date.now();let st=null;
+  try{const raw=localStorage.getItem(KEY);if(raw){st=JSON.parse(raw);}}catch(e){st=null;}
+  if(!st||!st.R||!Array.isArray(st.days)){st=sampleState(now);}
+  else{isSample=!!st.sample;let r=+new Date(st.R);if(isFinite(r)&&r<=now){while(r<=now)r+=WEEK;st.R=toIn(r);rolled=!isSample;}}
+  apply(st);
+}
+function read(){
+  let start=+$('st').value,end=+$('en').value;if(end<=start){end=Math.min(24,start+1);$('en').value=end;}
+  const days=[];for(let i=0;i<7;i++)days.push($('d'+i).checked);
+  const anyDay=days.some(Boolean);
+  const R=new Date($('reset').value),E=new Date($('ex').value);
+  return{W:clamp(num('w',0),0,100),R:isFinite(+R)?+R:Date.now()+3*DAY,S:clamp(num('s',0),0,100),sMin:clamp(num('sh',0),0,5)*60+clamp(num('sm',0),0,59),
+    days:anyDay?days:[true,true,true,true,true,true,true],anyDay,start,end,auto:$('auto').checked,burn:Math.max(0,num('burn',0)),
+    has:$('has').checked,E:isFinite(+E)?+E:0,shift:$('shift').value==='1',urgent:$('urg').checked,rawR:+R};
+}
+function save(){
+  const st={W:num('w',0),R:$('reset').value,S:num('s',0),sh:num('sh',0),sm:num('sm',0),days:[0,1,2,3,4,5,6].map(i=>$('d'+i).checked?1:0),start:+$('st').value,end:+$('en').value,auto:$('auto').checked,burn:num('burn',0),has:$('has').checked,E:$('ex').value,shift:$('shift').value,urgent:$('urg').checked,sample:isSample};
+  try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}
+}
+
+/* ---------- charts ---------- */
+const charts=new Map();
+function dayTicks(x0,x1,maxN){const out=[];for(let d=addDays(dayStart(x0),1);+d<=x1;d=addDays(d,1))out.push(+d);const k=Math.max(1,Math.ceil(out.length/Math.max(1,maxN)));return out.filter((_,i)=>i%k===0);}
+function lineChart(host,cfg){
+  charts.set(host,cfg);host.textContent='';
+  const w=Math.max(240,Math.floor(host.clientWidth||600)),h=cfg.h||250,m={l:42,r:16,t:22,b:28},pw=w-m.l-m.r,ph=h-m.t-m.b;
+  const X=t=>m.l+(t-cfg.x0)/(cfg.x1-cfg.x0)*pw,Y=v=>m.t+ph-(v/cfg.yMax)*ph,f=n=>n.toFixed(1);
+  let s='<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" role="img" tabindex="0" aria-label="'+cfg.label+'">';
+  s+='<rect x="0" y="0" width="'+w+'" height="'+h+'" fill="none"/>';
+  for(const v of cfg.yTicks){s+='<line class="grid" x1="'+m.l+'" x2="'+(w-m.r)+'" y1="'+f(Y(v))+'" y2="'+f(Y(v))+'"/><text class="tick" x="'+(m.l-8)+'" y="'+f(Y(v)+4)+'" text-anchor="end">'+cfg.yFmt(v)+'</text>';}
+  s+='<line class="axis" x1="'+m.l+'" x2="'+(w-m.r)+'" y1="'+f(Y(0))+'" y2="'+f(Y(0))+'"/>';
+  for(const t of dayTicks(cfg.x0,cfg.x1,Math.floor(pw/62))){const x=X(t);if(x>w-m.r-18)continue;s+='<line class="axis" x1="'+f(x)+'" x2="'+f(x)+'" y1="'+f(Y(0))+'" y2="'+f(Y(0)+4)+'"/><text class="tick" x="'+f(x)+'" y="'+(h-8)+'" text-anchor="middle">'+md(t)+'</text>';}
+  for(const v of (cfg.vlines||[])){if(v.t<cfg.x0||v.t>cfg.x1)continue;const x=X(v.t),end=x>w-90;s+='<line class="vl" x1="'+f(x)+'" x2="'+f(x)+'" y1="'+(m.t-6)+'" y2="'+f(Y(0))+'"/><text class="vt" x="'+f(x+(end?-5:5))+'" y="'+(m.t-10)+'" text-anchor="'+(end?'end':'start')+'">'+v.label+'</text>';}
+  for(const se of cfg.series){for(const part of se.parts){if(part.pts.length<2)continue;let d='';part.pts.forEach((p,i)=>{d+=(i?'L':'M')+f(X(p[0]))+' '+f(Y(Math.min(cfg.yMax,p[1])));});
+      if(part.area){const a=part.pts;s+='<path d="'+d+'L'+f(X(a[a.length-1][0]))+' '+f(Y(0))+'L'+f(X(a[0][0]))+' '+f(Y(0))+'Z" fill="'+se.color+'" fill-opacity=".1" stroke="none"/>';}
+      s+='<path d="'+d+'" fill="none" stroke="'+se.color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"'+(part.dash?' stroke-dasharray="2 5"':'')+'/>';}}
+  for(const k of (cfg.marks||[])){if(k.t<cfg.x0||k.t>cfg.x1)continue;const x=X(k.t),y=Y(Math.min(cfg.yMax,k.v)),end=x>m.l+pw*0.55,up=y>m.t+26;
+    s+='<circle cx="'+f(x)+'" cy="'+f(y)+'" r="5" fill="'+k.color+'" stroke="var(--surface)" stroke-width="2"/><text class="ml" x="'+f(x+(end?-9:9))+'" y="'+f(y+(k.below||!up?17:-9))+'" text-anchor="'+(end?'end':'start')+'">'+k.label+'</text>';}
+  s+='<line class="cross" x1="0" x2="0" y1="'+m.t+'" y2="'+f(Y(0))+'" visibility="hidden"/></svg>';
+  host.insertAdjacentHTML('beforeend',s);
+  const svg=host.firstChild,cross=svg.querySelector('.cross'),tip=el('div','tip');tip.hidden=true;host.appendChild(tip);
+  let cur=null;
+  const show=t=>{t=clamp(Math.round(t/cfg.snap)*cfg.snap,cfg.x0,cfg.x1);cur=t;const x=X(t);cross.setAttribute('x1',x);cross.setAttribute('x2',x);cross.setAttribute('visibility','visible');
+    tip.textContent='';tip.appendChild(el('span','th',dt(t)));let n=0;
+    for(const se of cfg.series){const v=se.at(t);if(v==null||!isFinite(v))continue;n++;const r=el('span','tr');const k=el('i','key');k.style.setProperty('--k',se.color);r.appendChild(k);r.appendChild(el('b',null,cfg.tipFmt(v)));r.appendChild(el('span',null,se.name));tip.appendChild(r);}
+    tip.hidden=!n;const tw=tip.offsetWidth||160;tip.style.left=Math.round(x+14+tw>w?Math.max(0,x-14-tw):x+14)+'px';};
+  const hide=()=>{cross.setAttribute('visibility','hidden');tip.hidden=true;};
+  svg.addEventListener('pointermove',e=>{const r=svg.getBoundingClientRect();show(cfg.x0+(e.clientX-r.left-m.l)/pw*(cfg.x1-cfg.x0));});
+  svg.addEventListener('pointerleave',hide);
+  svg.addEventListener('focus',()=>show(cur??(cfg.focusT??cfg.x0)));
+  svg.addEventListener('blur',hide);
+  svg.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();show((cur??cfg.x0)+(e.key==='ArrowRight'?1:-1)*cfg.snap*(e.shiftKey?6:1));}});
+}
+function niceMax(v){if(!(v>0))return{max:1,ticks:[0,1]};const steps=[.5,1,2,5,10,20,25,50,100,200];let st=steps.find(x=>v/x<=4)||steps[steps.length-1];const max=Math.ceil(v/st)*st;const ticks=[];for(let x=0;x<=max+1e-9;x+=st)ticks.push(x);return{max,ticks};}
+function sample(fn,a,b,step,extra){const pts=[];const ts=[];for(let t=a;t<b;t+=step)ts.push(t);ts.push(b);(extra||[]).forEach(x=>{if(x>a&&x<b)ts.push(x);});ts.sort((x,y)=>x-y);for(const t of ts){const v=fn(t);if(v!=null)pts.push([t,v]);}return pts;}
+
+/* ---------- render ---------- */
+function tiles(host,items){host.textContent='';for(const it of items){const d=el('div','tile');d.appendChild(el('dt',null,it.k));d.appendChild(el('dd','v num',it.v));if(it.n)d.appendChild(el('dd','n',it.n));host.appendChild(d);}}
+function flag(node,p,html){node.textContent='';html.forEach(x=>node.appendChild(typeof x==='string'?document.createTextNode(x):x));node.style.left=p+'%';node.style.transform=p<18?'translateX(-2px)':p>82?'translateX(calc(-100% + 2px))':'translateX(-50%)';}
+
+function render(){
+  const now=Date.now(),s=read(),M=compute(now,s),r=M.reset;
+  $('sampleTag').hidden=!isSample;
+  // input side-effects
+  const rn=$('resetNote');
+  if(isFinite(s.rawR)&&s.rawR-now>WEEK){rn.hidden=false;rn.textContent='7日より先の日時です。週間リセットは7日ごとなので、'+dt(M.R)+' として計算しています。';}
+  else if(rolled){rn.hidden=false;rn.textContent='保存していた日時を過ぎたので次の週に進めました。使用率も入れ直してください。';}
+  else if(!s.anyDay){rn.hidden=false;rn.textContent='曜日が1つも選ばれていないので、毎日使う前提で計算しています。';}
+  else rn.hidden=true;
+  $('burn').disabled=s.auto;if(s.auto)$('burn').value=pct(M.rate*M.perDay);
+  $('ex').disabled=$('shift').disabled=!s.has;
+
+  // hero
+  const f=M.focus,isToday=f.today&&!M.noActive;
+  $('heroEyebrow').textContent=isToday?'今日の配分':M.noActive?'リセットまでの配分':dayName(f.date,now)+'の配分';
+  $('heroLead').textContent=isToday?'今日はあと':M.noActive?'リセットまでに':dayName(f.date,now)+'は';
+  $('heroNum').firstChild.nodeValue=pct(M.budget);
+  const sub=$('heroSub');sub.textContent='';
+  const B=t=>el('b',null,t);
+  if(M.left<=0){sub.append('週間の上限に達しています。次の週間リセットは ',B(rel(M.R,now)),' です。');}
+  else if(M.noActive){sub.append('次の週間リセット(',B(rel(M.R,now)),')まで、選んだ利用時間帯がありません。残りは使い切って構いません。');}
+  else if(!isToday){sub.append('今日の利用時間帯は終わっています。',dayName(f.date,now),'は週間メーターが ',B(pct(M.stopAt)+'%'),' になるまで使えます。');}
+  else{sub.append('週間メーターが ',B(pct(M.stopAt)+'%'),' になったら今日は終わり。これを守ると、',rel(M.R,now),' のリセットまで毎日同じペースで使えます。');
+    const nx=M.days.find(x=>!x.today&&x.hours>0.05);if(M.budget<3&&nx)sub.append(' 今日の利用時間帯は残りわずかです。',dayName(nx.date,now),'は ',B('+'+pct(nx.pct)+'%'),'(',pct(nx.cum),'% まで)使えます。');}
+  const pill=$('pacePill');let tone='ok',pt='ペース通り';
+  if(M.left<=0){tone='crit';pt='週間の上限に到達';}
+  else if(M.depletionAt){const early=activeHours(M.depletionAt,M.R,M.c);tone=early>M.perDay?'crit':'warn';pt='このままだと '+rel(M.depletionAt,now)+' ごろ上限';}
+  else if(M.delta<-5){tone='good';pt='余裕あり(持続可能ペースより '+pct(-M.delta)+'pt 少ない)';}
+  pill.dataset.tone=tone;pill.textContent=pt;
+  const tr=$('track');tr.style.setProperty('--mfill',M.W>=90?'var(--crit)':M.W>=75?'var(--warn)':'var(--s1)');
+  $('fill').style.width=M.W+'%';$('mkStop').style.left=M.stopAt+'%';$('mkIdeal').style.left=M.ideal+'%';
+  flag($('flagStop'),M.stopAt,[(isToday?'今日はここまで ':'次の停止線 '),B(pct(M.stopAt)+'%')]);
+  flag($('flagIdeal'),M.ideal,['持続可能ペース ',B(pct(M.ideal)+'%')]);
+  $('meter').setAttribute('aria-label','週間メーター。現在 '+pct(M.W)+'%、今日の停止線 '+pct(M.stopAt)+'%、持続可能ペース '+pct(M.ideal)+'%');
+  const activeDays=M.days.filter(d=>d.hours>0.05).length;
+  tiles($('tiles'),[
+    {k:'週間の残り',v:pct(M.left)+'%',n:'現在の使用率 '+pct(M.W)+'%'},
+    {k:'週間リセットまで',v:dur((M.R-now)/H),n:dt(M.R)+' / 利用日はあと'+activeDays+'日'},
+    {k:'消費ペース',v:pct(M.rate*M.perDay)+'% / 日',n:s.auto?'今週の実績から算出':'手入力の値'},
+    {k:'上限に届く見込み',v:M.left<=0?'到達済み':M.depletionAt?rel(M.depletionAt,now):'届かない',n:M.depletionAt?'リセットの '+dur((M.R-M.depletionAt)/H)+' 前':'リセット時の予測 '+pct(Math.min(100,M.projRaw))+'%'}]);
+  const sl=$('sessLine');
+  sl.textContent=s.S>=100?'5時間セッションは上限に達しています。あと '+dur(s.sMin/60)+' で回復します。':'5時間セッションは '+pct(s.S)+'% 使用中。'+(s.sMin>0?'あと '+dur(s.sMin/60)+' で回復します。':'')+'セッションの上限に当たっても、週間の残りは減りません。';
+
+  // pace chart
+  const fn=M.fns,pt2=$('paceText');
+  pt2.textContent=M.depletionAt?'いまの使用率は持続可能ペースより '+pct(Math.abs(M.delta))+'pt '+(M.delta>=0?'多く':'少なく')+'、このまま進むと '+dt(M.depletionAt)+' ごろ上限に届きます。おすすめ配分の線に沿えば、リセットちょうどで使い切れます。'
+    :'いまの使用率は持続可能ペースより '+pct(Math.abs(M.delta))+'pt '+(M.delta>=0?'多い':'少ない')+'ものの、このペースならリセットまで上限に届きません。リセット時の予測は '+pct(Math.min(100,M.projRaw))+'% です。';
+  const marks=[{t:now,v:M.W,label:'いま '+pct(M.W)+'%',color:'var(--s2)',below:M.W>80}];
+  if(M.depletionAt)marks.push({t:M.depletionAt,v:100,label:'上限 '+md(M.depletionAt)+' '+hm(M.depletionAt),color:'var(--s2)',below:true});
+  lineChart($('chPace'),{label:'週間メーターの進み方。持続可能ペース、このままのペース、おすすめ配分の3本',x0:M.WS,x1:M.R,yMax:100,yTicks:[0,25,50,75,100],yFmt:v=>v+'%',tipFmt:v=>pct(v)+'%',snap:H,focusT:now,h:260,
+    series:[
+      {name:'持続可能ペース',color:'var(--ref)',at:fn.sustain,parts:[{pts:sample(fn.sustain,M.WS,M.R,H)}]},
+      {name:'このままのペース',color:'var(--s2)',at:t=>t<=now?fn.actual(t):fn.proj(t),parts:[{pts:sample(fn.actual,M.WS,now,H)},{pts:sample(fn.proj,now,M.R,H,M.depletionAt?[M.depletionAt]:[]),dash:true}]},
+      {name:'おすすめ配分',color:'var(--s1)',at:fn.rec,parts:[{pts:sample(fn.rec,now,M.R,H)}]}],
+    marks});
+  const tb=$('tbPace');tb.textContent='';
+  const hr=tb.insertRow();['日の終わり','持続可能ペース','このままのペース','おすすめ配分'].forEach(x=>hr.appendChild(el('th',null,x)));
+  for(let d=dayStart(M.WS);+d<M.R;d=addDays(d,1)){const t=Math.min(M.R,+addDays(d,1));const row=tb.insertRow();const a=t<=now?fn.actual(t):fn.proj(t),rc=fn.rec(t);
+    [t>=M.R?dt(t):md(+d),pct(fn.sustain(t))+'%',pct(a)+'%'+(t>now?'(予測)':''),rc==null?'':pct(rc)+'%'].forEach(x=>row.appendChild(el('td',null,x)));}
+
+  // day bars
+  const bars=$('bars');bars.textContent='';const mx=Math.max(1,...M.days.map(d=>d.pct));
+  for(const d of M.days){const b=el('div','bar'+(d.date===f.date&&!M.noActive?' today':''));b.tabIndex=0;
+    b.title=md(d.date)+':'+pct(d.pct)+'% 使える(利用時間 '+dur(d.hours)+')。終わりの週間メーター '+pct(d.cum)+'%';
+    b.appendChild(el('span','bv',d.hours>0.05?'+'+pct(d.pct)+'%':'休み'));const c=el('div','col'),i=el('i');i.style.height=(d.pct/mx*100)+'%';if(!(d.hours>0.05))i.hidden=true;c.appendChild(i);b.appendChild(c);
+    const dd=new Date(d.date);b.appendChild(el('span','bd',d.today?'今日':WD[dd.getDay()]));b.appendChild(el('span','bt',pct(d.cum)+'%'));bars.appendChild(b);}
+
+  // reset
+  renderReset(now,s,M,r);
+}
+
+function renderReset(now,s,M,r){
+  const pill=$('rPill'),head=$('rHead'),sub=$('rSub'),why=$('rWhy');why.textContent='';
+  const li=t=>why.appendChild(el('li',null,t));
+  const show=on=>{$('rTiles').hidden=!on;$('rCurveP').hidden=!on;$('rSimP').hidden=!on;};
+  if(r.kind==='none'){pill.dataset.tone='ok';pill.textContent='リセット権なし';head.textContent='リセット権を持っていない前提で計算しています';sub.textContent='設定 › 使用量 に「無料でリセット」のボタンが出ていれば、左の欄でチェックを入れてください。使いどきを計算します。';show(false);return;}
+  if(r.kind==='expired'){pill.dataset.tone='crit';pill.textContent='期限切れ';head.textContent='入力された期限('+dt(r.E)+')を過ぎています';sub.textContent='自分の画面にまだボタンが出ている場合は、左の欄の有効期限を直してください。';show(false);return;}
+  show(true);
+  const sessWait='5時間セッションはあと '+dur(s.sMin/60)+' で回復します。';
+  if(r.kind==='now'){pill.dataset.tone='go';pill.textContent='今使う';head.textContent='今使うのがベストです';sub.textContent='使わない場合より、上限で止まる時間を '+dur(r.max)+' 減らせます。週間は '+pct(M.W)+'% ぶん、5時間セッションは '+pct(s.S)+'% ぶんが戻ります。';}
+  else if(r.kind==='wait'){pill.dataset.tone='warn';pill.textContent='まだ使わない';head.textContent=rel(r.best.t,now)+' ごろ、上限に達したら使う';sub.textContent='その時点なら週間メーターの '+pct(r.best.meter)+'% ぶんが戻り、止まる時間を '+dur(r.best.saved)+' 減らせます。'+(r.savedNow>=r.max-0.3?'今使っても計算上の差はありませんが、上限に達するまで持っておけば、使い方が軽くなったときに無駄になりません。':'今使うと減らせるのは '+dur(r.savedNow)+' にとどまります。');}
+  else if(r.kind==='urgent'){pill.dataset.tone='warn';pill.textContent='急ぎなら使ってよい';head.textContent='待てないなら今使って構いません';sub.textContent=(r.best?'計算上のベストは '+rel(r.best.t,now)+' ごろで、今使うと取り戻せる時間が '+dur(Math.max(0,r.max-r.savedNow))+' 短くなります。':'このペースなら週間の上限には届かないので、今使って失うものはほとんどありません。')+(r.sessBlocked?sessWait+'それを待てるなら温存が得です。':'');}
+  else{pill.dataset.tone='good';pill.textContent='温存';head.textContent='今は使わない。'+rel(r.last.t,now)+' まで温存';sub.textContent='このペースなら期限まで週間の上限に届きません。期限の直前に押せば、その時点の使用分(約 '+pct(r.last.meter)+'%)がそのまま戻ります。途中で上限に達したら、その時点で使ってください。';}
+  li('今使うと戻るのは週間の '+pct(M.W)+'% ぶんです。残っている '+pct(M.left)+'% は捨てることになります。');
+  if(r.sessBlocked&&r.kind!=='now'&&r.kind!=='urgent')li(sessWait+'5時間セッションだけが止まっているなら、待つ方が得です。');
+  li('期限は '+dt(r.E)+'(あと '+dur((r.E-now)/H)+')。それまでに週間リセットが '+r.nResets+' 回あります。');
+  li(s.shift?'使った時点から7日後に週間リセットがずれる設定で計算しています。':'使っても週間リセットの日時は変わらない設定で計算しています。');
+  li('消費ペースは 1日 '+pct(M.rate*M.perDay)+'% で一定と仮定しています。使い方が変わったら数値を入れ直してください。');
+
+  const useLabel=r.best?'ベストの時点で使う':'期限直前に使う';
+  tiles($('rTiles'),[
+    {k:'今使うと戻る量',v:pct(M.W)+'%',n:'週間ぶん。セッションは '+pct(s.S)+'%'},
+    {k:'使わない場合に止まる時間',v:dur(r.bNone),n:dt(r.horizon)+' までの合計'},
+    {k:useLabel+'場合',v:dur(r.bPlan),n:dt(r.useT)+' に使用'},
+    {k:'期限まで',v:dur((r.E-now)/H),n:dt(r.E)}]);
+
+  const nm=niceMax(Math.max(r.max,0.5)*1.12),cv=r.curve;
+  const atC=t=>{if(t<cv[0][0]||t>r.E)return null;let lo=0,hi=cv.length-1;while(lo<hi){const mid=(lo+hi+1)>>1;if(cv[mid][0]<=t)lo=mid;else hi=mid-1;}return cv[lo][1];};
+  lineChart($('chCurve'),{label:'リセット権を使う時点ごとの、取り戻せる利用時間',x0:now,x1:Math.max(r.E,now+H),yMax:nm.max,yTicks:nm.ticks,yFmt:v=>v+'h',tipFmt:v=>dur(v),snap:DT,h:220,
+    series:[{name:'取り戻せる時間',color:'var(--s1)',at:atC,parts:[{pts:cv,area:true}]}],
+    marks:r.best?[{t:r.best.t,v:r.best.saved,label:'ベスト '+md(r.best.t)+' '+hm(r.best.t),color:'var(--s1)'}]:[],
+    vlines:[]});
+  $('simKey').textContent=useLabel+'場合';
+  const tr=rec=>{const pts=[];let prev=-1;for(let i=0;i<r.steps;i++){const v=rec[i];if(i===0||i===r.steps-1||Math.abs(v-prev)>0.2||v<prev){if(v<prev-1&&i>0)pts.push([now+i*DT,prev]);pts.push([now+i*DT,v]);prev=v;}}return pts;};
+  const atR=rec=>t=>{const i=Math.floor((t-now)/DT);return i>=0&&i<r.steps?rec[i]:null;};
+  lineChart($('chSim'),{label:'週間メーターの見通し。リセット権を使わない場合と使う場合',x0:now,x1:r.horizon,yMax:100,yTicks:[0,25,50,75,100],yFmt:v=>v+'%',tipFmt:v=>pct(v)+'%',snap:H,h:240,
+    series:[{name:'使わない場合',color:'var(--s2)',at:atR(r.recNone),parts:[{pts:tr(r.recNone)}]},{name:useLabel+'場合',color:'var(--s1)',at:atR(r.recPlan),parts:[{pts:tr(r.recPlan)}]}],
+    marks:[{t:r.useT,v:r.useMeter,label:'ここで使う',color:'var(--s1)',below:r.useMeter>80}],
+    vlines:[{t:r.E,label:'期限'}]});
+  const tb=$('tbSim');tb.textContent='';const hr=tb.insertRow();['使い方','使う日時','上限で止まる時間','取り戻せる時間'].forEach(x=>hr.appendChild(el('th',null,x)));
+  const rows=[['使わない','',r.bNone,0],['今使う',dt(now),r.bNow,r.savedNow]];
+  rows.push([useLabel,dt(r.useT),r.bPlan,Math.max(0,r.bNone-r.bPlan)]);
+  for(const x of rows){const row=tb.insertRow();[x[0],x[1]||'使わない',dur(x[2]),dur(x[3])].forEach(v=>row.appendChild(el('td',null,v)));}
+}
+
+/* ---------- wiring ---------- */
+load();
+const form=$('form');
+form.addEventListener('submit',e=>e.preventDefault());
+form.addEventListener('input',e=>{
+  if(e.target.id==='wr')$('w').value=$('wr').value;if(e.target.id==='w')$('wr').value=clamp(num('w',0),0,100);
+  if(e.target.id==='reset'||e.target.id==='w')rolled=false;
+  if(e.target.id==='auto'&&!$('auto').checked)$('burn').value=$('burn').value||15;
+  isSample=false;save();render();});
+$('toSample').addEventListener('click',()=>{isSample=true;rolled=false;apply(sampleState(Date.now()));save();render();});
+render();
+let rw=0;new ResizeObserver(()=>{const w=$('chPace').clientWidth;if(w&&w!==rw){rw=w;charts.forEach((cfg,host)=>{if(host.clientWidth)lineChart(host,cfg);});}}).observe($('chPace'));
+setInterval(render,60000);
+})();
+</script>
+</body>
+</html>
