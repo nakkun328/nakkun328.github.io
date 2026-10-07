@@ -127,6 +127,10 @@ input[type=range]{flex:1 1 120px;min-width:0;accent-color:var(--accent-fill)}
 .note.alert{color:var(--ink);border-left:3px solid var(--warn);padding-left:8px}
 button.ghost{font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1px solid var(--axis);border-radius:6px;padding:6px 12px;cursor:pointer;align-self:flex-start}
 button.ghost:hover{background:var(--plane)}
+button.ghost.sm{font-size:12px;padding:3px 9px}
+.logadd{margin-top:10px}
+.logadd input[type=datetime-local]{width:auto;flex:1 1 180px;font-size:13px}
+.logadd input[type=number]{font-size:13px;width:4.6em}
 hr{border:0;border-top:1px solid var(--grid);margin:0;width:100%}
 
 /* result sections */
@@ -314,11 +318,24 @@ th:first-child,td:first-child{text-align:left}
           <h3>週間メーターの進み方</h3>
           <ul class="legend">
             <li><i class="key" style="--k:var(--ref)"></i>持続可能ペース(リセット時にちょうど100%)</li>
-            <li><i class="key" style="--k:var(--s2)"></i>このままのペース(点線は予測)</li>
+            <li><i class="key" style="--k:var(--s2)"></i>実績と予測</li>
             <li><i class="key" style="--k:var(--s1)"></i>おすすめ配分</li>
           </ul>
           <div class="chart" id="chPace"></div>
+          <p class="cap" style="margin-top:0" id="paceCap"></p>
           <details class="tbl"><summary>表で見る</summary><div class="tscroll"><table id="tbPace"></table></div></details>
+          <details class="tbl" id="logBox"><summary id="logSum">記録した値</summary>
+            <p class="note" style="margin-top:8px">数値を入れるか画面を貼り付けるたびに、その時刻と使用率をこのブラウザに記録します。5分以内の入力は1件にまとめます。外部には送りません。</p>
+            <div class="row logadd">
+              <label class="unit" for="logT">過去の値を追加</label>
+              <input type="datetime-local" id="logT">
+              <input type="number" id="logW" min="0" max="100" step="1" inputmode="decimal" aria-label="週間の使用率"><span class="unit">%</span>
+              <button type="button" class="ghost sm" id="logAdd">追加</button>
+            </div>
+            <p class="note alert" id="logMsg" hidden></p>
+            <div class="tscroll"><table id="tbLog"></table></div>
+            <button type="button" class="ghost sm" id="logClear" style="margin-top:10px">記録をすべて消す</button>
+          </details>
         </div>
         <div class="panel">
           <h3>日ごとの配分</h3>
@@ -428,7 +445,7 @@ function resetPlan(now,s,R,rate,c){
     curve:curve.map(p=>[now+p[0]*DT,p[1]]),recNone,recPlan,steps,horizon,nResets,blockedNow,sessBlocked:s.S>=100};
 }
 
-function compute(now,s){
+function compute(now,s,log){
   now=+now;const c={days:s.days,start:s.start,end:s.end};
   let R=+s.R;while(R<=now)R+=WEEK;while(R-now>WEEK)R-=WEEK;
   const WS=R-WEEK,AH=(a,b)=>activeHours(a,b,c);
@@ -450,14 +467,19 @@ function compute(now,s){
   const noActive=!(remain>0);
   const budget=noActive?left:focus.pct;
   const stopAt=noActive?100:focus.cum;
+  // recorded readings of this week: solid line through them; before the first one the path is an estimate
+  const recs=(log||[]).filter(e=>e&&e.t>WS&&e.t<now-3e4&&isFinite(e.W)).map(e=>[+e.t,Math.min(100,Math.max(0,+e.W))]).sort((a,b)=>a[0]-b[0]);
+  const t1=recs.length?recs[0][0]:now,W1=recs.length?recs[0][1]:W,e1=AH(WS,t1),trail=recs.concat([[now,W]]);
+  const est=t=>e1>0?W1*AH(WS,t)/e1:W1*(t-WS)/Math.max(1,t1-WS);
+  const interp=t=>{let i=1;while(i<trail.length-1&&trail[i][0]<t)i++;const a=trail[i-1],b=trail[i];return b[0]===a[0]?b[1]:a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);};
   const fns={
     sustain:t=>total>0?AH(WS,t)/total*100:0,
-    actual:t=>t>now?null:(elapsed>0?W*AH(WS,t)/elapsed:W*(t-WS)/Math.max(1,now-WS)),
+    actual:t=>t>now?null:(t<=t1?est(t):interp(t)),
     proj:t=>t<now?null:Math.min(100,W+rate*AH(now,t)),
     rec:t=>t<now?null:(remain>0?W+left*AH(now,t)/remain:W)};
   const reset=resetPlan(now,s,R,rate,c);
   if(reset.best&&depletionAt&&Math.abs(reset.best.t-depletionAt)<=20*6e4){reset.best.t=depletionAt;reset.useT=depletionAt;}
-  return{now,R,WS,c,W,left,total,elapsed,remain,todayRemain,perDay,autoRate,rate,ideal,delta:W-ideal,depletionAt,projRaw,days,focus,noActive,budget,stopAt,fns,reset};
+  return{now,R,WS,c,W,left,total,elapsed,remain,todayRemain,perDay,autoRate,rate,ideal,delta:W-ideal,depletionAt,projRaw,days,focus,noActive,budget,stopAt,fns,reset,recs,trail,firstRec:t1};
 }
 function parseUsage(text,now){
   const out={},pad=n=>String(n).padStart(2,'0'),WDJ='日月火水木金土';
@@ -513,6 +535,12 @@ function apply(st){
   $('has').checked=!!st.has;$('ex').value=st.E;$('shift').value=st.shift;$('urg').checked=!!st.urgent;
 }
 let src='sample',rolled=false;
+const LOGKEY='haibun-meter-log-v1';let log=[];
+function loadLog(){try{const a=JSON.parse(localStorage.getItem(LOGKEY)||'[]');log=Array.isArray(a)?a.filter(e=>e&&isFinite(e.t)&&isFinite(e.W)):[];}catch(e){log=[];}}
+function saveLog(){const cut=Date.now()-70*DAY;log=log.filter(e=>e.t>=cut).sort((a,b)=>a.t-b.t).slice(-1500);try{localStorage.setItem(LOGKEY,JSON.stringify(log));}catch(e){}}
+function record(){if(src!=='user')return;const now=Date.now(),e={t:now,W:clamp(num('w',0),0,100),S:clamp(num('s',0),0,100)},last=log[log.length-1];
+  if(last&&now>=last.t&&now-last.t<5*6e4)log[log.length-1]=e;else log.push(e);saveLog();}
+function sampleLog(now,R){while(R<=now)R+=WEEK;const ws=R-WEEK;return [[.25,11],[.45,27],[.68,34],[.9,55]].map(x=>({t:ws+(now-ws)*x[0],W:x[1]}));}
 function load(){
   const now=Date.now();let st=null;
   try{const raw=localStorage.getItem(KEY);if(raw){st=JSON.parse(raw);}}catch(e){st=null;}
@@ -551,7 +579,8 @@ function lineChart(host,cfg){
   for(const v of (cfg.vlines||[])){if(v.t<cfg.x0||v.t>cfg.x1)continue;const x=X(v.t),end=x>w-90;s+='<line class="vl" x1="'+f(x)+'" x2="'+f(x)+'" y1="'+(m.t-6)+'" y2="'+f(Y(0))+'"/><text class="vt" x="'+f(x+(end?-5:5))+'" y="'+(m.t-10)+'" text-anchor="'+(end?'end':'start')+'">'+v.label+'</text>';}
   for(const se of cfg.series){for(const part of se.parts){if(part.pts.length<2)continue;let d='';part.pts.forEach((p,i)=>{d+=(i?'L':'M')+f(X(p[0]))+' '+f(Y(Math.min(cfg.yMax,p[1])));});
       if(part.area){const a=part.pts;s+='<path d="'+d+'L'+f(X(a[a.length-1][0]))+' '+f(Y(0))+'L'+f(X(a[0][0]))+' '+f(Y(0))+'Z" fill="'+se.color+'" fill-opacity=".1" stroke="none"/>';}
-      s+='<path d="'+d+'" fill="none" stroke="'+se.color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"'+(part.dash?' stroke-dasharray="2 5"':'')+'/>';}}
+      s+='<path d="'+d+'" fill="none" stroke="'+se.color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"'+(part.dash?' stroke-dasharray="2 5"':'')+(part.faint?' stroke-opacity=".4"':'')+'/>';}
+    let px=-99;for(const q of (se.dots||[])){const x=X(q[0]);if(x-px<7)continue;px=x;s+='<circle cx="'+f(x)+'" cy="'+f(Y(Math.min(cfg.yMax,q[1])))+'" r="3.5" fill="'+se.color+'" stroke="var(--surface)" stroke-width="1.5"/>';}}
   for(const k of (cfg.marks||[])){if(k.t<cfg.x0||k.t>cfg.x1)continue;const x=X(k.t),y=Y(Math.min(cfg.yMax,k.v)),end=x>m.l+pw*0.55,up=y>m.t+26;
     s+='<circle cx="'+f(x)+'" cy="'+f(y)+'" r="5" fill="'+k.color+'" stroke="var(--surface)" stroke-width="2"/><text class="ml" x="'+f(x+(end?-9:9))+'" y="'+f(y+(k.below||!up?17:-9))+'" text-anchor="'+(end?'end':'start')+'">'+k.label+'</text>';}
   s+='<line class="cross" x1="0" x2="0" y1="'+m.t+'" y2="'+f(Y(0))+'" visibility="hidden"/></svg>';
@@ -577,7 +606,7 @@ function tiles(host,items){host.textContent='';for(const it of items){const d=el
 function flag(node,p,html){node.textContent='';html.forEach(x=>node.appendChild(typeof x==='string'?document.createTextNode(x):x));node.style.left=p+'%';node.style.transform=p<18?'translateX(-2px)':p>82?'translateX(calc(-100% + 2px))':'translateX(-50%)';}
 
 function render(){
-  const now=Date.now(),s=read(),M=compute(now,s),r=M.reset;
+  const now=Date.now(),s=read(),M=compute(now,s,src==='user'?log:src==='sample'?sampleLog(now,s.R):[]),r=M.reset;
   const tag=$('sampleTag');tag.hidden=src==='user';tag.textContent='サンプル値で表示中。使用量の画面を貼り付けるか、数値を入れてください';
   // input side-effects
   const rn=$('resetNote');
@@ -625,16 +654,19 @@ function render(){
     :'いまの使用率は持続可能ペースより '+pct(Math.abs(M.delta))+'pt '+(M.delta>=0?'多い':'少ない')+'ものの、このペースならリセットまで上限に届きません。リセット時の予測は '+pct(Math.min(100,M.projRaw))+'% です。';
   const marks=[{t:now,v:M.W,label:'いま '+pct(M.W)+'%',color:'var(--s2)',below:M.W>80}];
   if(M.depletionAt)marks.push({t:M.depletionAt,v:100,label:'上限 '+md(M.depletionAt)+' '+hm(M.depletionAt),color:'var(--s2)',below:true});
-  lineChart($('chPace'),{label:'週間メーターの進み方。持続可能ペース、このままのペース、おすすめ配分の3本',x0:M.WS,x1:M.R,yMax:100,yTicks:[0,25,50,75,100],yFmt:v=>v+'%',tipFmt:v=>pct(v)+'%',snap:H,focusT:now,h:260,
+  lineChart($('chPace'),{label:'週間メーターの進み方。持続可能ペース、実績と予測、おすすめ配分の3本',x0:M.WS,x1:M.R,yMax:100,yTicks:[0,25,50,75,100],yFmt:v=>v+'%',tipFmt:v=>pct(v)+'%',snap:H,focusT:now,h:260,
     series:[
       {name:'持続可能ペース',color:'var(--ref)',at:fn.sustain,parts:[{pts:sample(fn.sustain,M.WS,M.R,H)}]},
-      {name:'このままのペース',color:'var(--s2)',at:t=>t<=now?fn.actual(t):fn.proj(t),parts:[{pts:sample(fn.actual,M.WS,now,H)},{pts:sample(fn.proj,now,M.R,H,M.depletionAt?[M.depletionAt]:[]),dash:true}]},
+      {name:'実績と予測',color:'var(--s2)',at:t=>t<=now?fn.actual(t):fn.proj(t),dots:M.recs,
+        parts:[{pts:sample(fn.actual,M.WS,M.firstRec,H),faint:true},{pts:M.recs.length?M.trail:[]},{pts:sample(fn.proj,now,M.R,H,M.depletionAt?[M.depletionAt]:[]),dash:true}]},
       {name:'おすすめ配分',color:'var(--s1)',at:fn.rec,parts:[{pts:sample(fn.rec,now,M.R,H)}]}],
     marks});
+  $('paceCap').textContent=M.recs.length?'●は記録した時点('+M.recs.length+'件)で、その間を結んだ実線が実際に使ったペースです。最初の記録より前は薄い線の推定、いまより先は点線の予測です。':'まだ今週の記録がないので、いままでの線は均等に使ったと仮定した推定(薄い線)です。数値を更新するたびに記録され、実際のペースが実線で出ます。点線は予測です。';
+  renderLog(now);
   const tb=$('tbPace');tb.textContent='';
-  const hr=tb.insertRow();['日の終わり','持続可能ペース','このままのペース','おすすめ配分'].forEach(x=>hr.appendChild(el('th',null,x)));
+  const hr=tb.insertRow();['日の終わり','持続可能ペース','実績と予測','おすすめ配分'].forEach(x=>hr.appendChild(el('th',null,x)));
   for(let d=dayStart(M.WS);+d<M.R;d=addDays(d,1)){const t=Math.min(M.R,+addDays(d,1));const row=tb.insertRow();const a=t<=now?fn.actual(t):fn.proj(t),rc=fn.rec(t);
-    [t>=M.R?dt(t):md(+d),pct(fn.sustain(t))+'%',pct(a)+'%'+(t>now?'(予測)':''),rc==null?'':pct(rc)+'%'].forEach(x=>row.appendChild(el('td',null,x)));}
+    [t>=M.R?dt(t):md(+d),pct(fn.sustain(t))+'%',pct(a)+'%'+(t>now?'(予測)':t<=M.firstRec?'(推定)':''),rc==null?'':pct(rc)+'%'].forEach(x=>row.appendChild(el('td',null,x)));}
 
   // day bars
   const bars=$('bars');bars.textContent='';const mx=Math.max(1,...M.days.map(d=>d.pct));
@@ -645,6 +677,16 @@ function render(){
 
   // reset
   renderReset(now,s,M,r);
+}
+
+function renderLog(now){
+  const rows=(src==='user'?log:[]).slice().sort((a,b)=>b.t-a.t),tb=$('tbLog');tb.textContent='';
+  $('logSum').textContent='記録した値('+rows.length+'件)';$('logClear').hidden=!rows.length;
+  if(!$('logT').value)$('logT').value=toIn(now);
+  if(!rows.length)return;
+  const hr=tb.insertRow();['日時','週間','セッション',''].forEach(x=>hr.appendChild(el('th',null,x)));
+  for(const e of rows.slice(0,200)){const row=tb.insertRow();[dt(e.t),pct(e.W)+'%',isFinite(e.S)?pct(e.S)+'%':'-'].forEach(x=>row.appendChild(el('td',null,x)));
+    const td=el('td'),b=el('button','ghost sm','削除');b.type='button';b.dataset.t=e.t;b.setAttribute('aria-label',dt(e.t)+' の記録を削除');td.appendChild(b);row.appendChild(td);}
 }
 
 function renderReset(now,s,M,r){
@@ -692,7 +734,7 @@ function renderReset(now,s,M,r){
 }
 
 /* ---------- wiring ---------- */
-load();
+load();loadLog();
 const form=$('form');
 form.addEventListener('submit',e=>e.preventDefault());
 form.addEventListener('input',e=>{
@@ -701,6 +743,13 @@ form.addEventListener('input',e=>{
   if(e.target.id==='reset'||e.target.id==='w')rolled=false;
   if(e.target.id==='auto'&&!$('auto').checked)$('burn').value=$('burn').value||15;
   src='user';save();render();});
+form.addEventListener('change',e=>{if(e.target.id==='w'||e.target.id==='wr'){record();render();}});
+$('tbLog').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(!b)return;const t=+b.dataset.t;log=log.filter(x=>x.t!==t);saveLog();render();});
+$('logAdd').addEventListener('click',()=>{const t=+new Date($('logT').value),w=parseFloat($('logW').value),msg=$('logMsg');
+  if(!isFinite(t)||!isFinite(w)||w<0||w>100||t>Date.now()){msg.hidden=false;msg.textContent='いまより前の日時と、0〜100 の使用率を入れてください。';return;}
+  msg.hidden=true;if(src!=='user'){src='user';save();}log.push({t,W:w});saveLog();$('logW').value='';render();});
+let clearArm=0;$('logClear').addEventListener('click',()=>{const b=$('logClear');if(Date.now()-clearArm<4000){log=[];saveLog();clearArm=0;b.textContent='記録をすべて消す';render();}
+  else{clearArm=Date.now();b.textContent='もう一度押すとすべて消えます';setTimeout(()=>{if(clearArm){clearArm=0;b.textContent='記録をすべて消す';}},4000);}});
 $('toSample').addEventListener('click',()=>{src='sample';rolled=false;apply(sampleState(Date.now()));save();render();});
 function doParse(){
   const now=Date.now(),o=parseUsage($('paste').value,now),msg=$('parseMsg'),got=[],miss=[];
@@ -719,7 +768,7 @@ function doParse(){
   if(!got.length){msg.className='note alert';msg.textContent='読み取れませんでした。設定 › 使用量 の画面全体を選択してコピーし、貼り付けてください(日本語表示の画面に対応)。';return;}
   msg.className='note'+(miss.length?' alert':'');
   msg.textContent=hm(now)+' に読み取りました。'+got.join(' / ')+'。'+(o.has&&!o.eTime?'期限は日付だけなので、安全側でその日の 0:00 として扱います。':'')+(miss.length?'読み取れなかった項目: '+miss.join('、')+'。':'');
-  $('paste').value='';src='user';rolled=false;save();render();
+  $('paste').value='';src='user';rolled=false;save();if(o.W!=null)record();render();
 }
 $('parseBtn').addEventListener('click',doParse);
 $('paste').addEventListener('paste',()=>setTimeout(doParse,0));
