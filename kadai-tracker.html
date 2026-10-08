@@ -668,13 +668,13 @@ const BADGE_DEFS=[
   {id:'noSkip',icon:'✨',name:'ノーミス',desc:'スキップなしで完了'},
 ];
 const DEFAULT_SUBS={
-  MATH1:{name:'数学Ⅰ',deadline:'2026-10-16T08:30',dlStr:'10月16日（金）朝 問題集ノート提出（考査日は要確認）',color:'#22c55e',
+  MATH1:{name:'数学Ⅰ',deadline:'2026-10-16T08:30',dlStr:'10月16日（金）朝 問題集ノート提出／考査 10月21日（水）',color:'#22c55e',
     sections:[
       {label:'授業プリント（2学期使用分すべて）',note:'2学期の授業で使ったプリント全部を解き直す',probs:[1],opt:false},
       {label:'深進数学B p.19〜p.43',note:'繰り返し解く・間違えた問題に印を付けて直前に再演習',probs:[2],opt:false},
       {label:'サクシード数学Ⅱ+B+C 問題228〜265',note:'p.127の問題228〜p.137の問題265（「重要例題」「発展問題」は除く）／問題集ノートは10/16（金）朝提出',probs:range(228,265),opt:false}
     ]},
-  CHEM:{name:'化学基礎',deadline:'2026-10-16T08:30',dlStr:'考査日の放課後 セミナー化学ノート提出（日付は要確認）',color:'#3b82f6',
+  CHEM:{name:'化学基礎',deadline:'2026-10-22T16:00',dlStr:'10月22日（木）考査日の放課後 セミナー化学ノート提出',color:'#3b82f6',
     sections:[
       {label:'教科書 PP.110〜129',note:'授業プリント3冊目 P.12〜最後。濃度の計算・換算／物質量と結晶／化学反応式と量的関係／化学変化における諸法則',probs:[1],opt:false},
       {label:'スクエア PP.60〜67',note:'試験範囲',probs:[2],opt:false},
@@ -683,7 +683,7 @@ const DEFAULT_SUBS={
       {label:'セミナー化学 化学反応式',note:'91, 93〜102, 105〜110, 112〜114',probs:[91].concat(range(93,102),range(105,110),range(112,114)),opt:false},
       {label:'セミナー化学 諸法則',note:'103, 104',probs:[103,104],opt:false}
     ]},
-  GEO:{name:'地学基礎',deadline:'2026-10-16T08:30',dlStr:'中間考査（日付は要確認）',color:'#f97316',
+  GEO:{name:'地学基礎',deadline:'2026-10-20T08:30',dlStr:'10月20日（火）考査',color:'#f97316',
     sections:[
       {label:'範囲：授業で学んだ火山分野すべて',note:'※水蒸気爆発とマグマ水蒸気爆発の見分け方（噴出物から判断）の問題が必ず出る。違いを整理しておく',probs:[1],opt:false},
       {label:'授業プリント No.15〜20',note:'実験・実習プリントは実験の概要と結果の解釈を理解する／No.20は次週の実験で配布予定（顕微鏡と肉眼による火成岩の分類）',probs:range(15,20),opt:false},
@@ -691,13 +691,13 @@ const DEFAULT_SUBS={
       {label:'図表 p.50〜63',note:'ただし授業プリントに無い内容は除く',probs:[3],opt:false},
       {label:'センサー地学基礎 問題',note:'問題番号 39, 40, 41, 42, 43, 44, 46, 52, 53, 54, 61, 62／Step 1・Step 2・重要問題は理解度確認に適宜使う',probs:[39,40,41,42,43,44,46,52,53,54,61,62],opt:false}
     ]},
-  KOUKYO:{name:'公共',deadline:'2026-10-16T08:30',dlStr:'提出物確認・試験範囲は教室掲示（日付は要確認）',color:'#ef4444',
+  KOUKYO:{name:'公共',deadline:'2026-10-22T08:30',dlStr:'10月22日（木）考査（試験範囲は教室掲示）',color:'#ef4444',
     sections:[
       {label:'提出物の出し忘れ確認',note:'ジョハリの窓＆自分史のワークシート／キャリア形成に関するコメントペーパー／「帰ってきたヒトラー」に関するコメントペーパー（履歴書は今回の提出物に含まない）',probs:[1,2,3],opt:false},
       {label:'試験範囲の確認（教室掲示）',note:'掲示された試験範囲を自分でしっかり確認する',probs:[4],opt:false},
       {label:'映画「帰ってきたヒトラー」鑑賞日に欠席した人のみ',note:'欠席した旨を記載してコメントペーパー提出。前半or後半のみ欠席→鑑賞した内容から考えたこと感じたこと／両方欠席→公共空間に関する授業を受けて考えたこと感じたこと',probs:[5],opt:true}
     ]},
-  GENKOKU:{name:'現代の国語',deadline:'2026-10-16T08:30',dlStr:'期限は要確認',color:'#a855f7',
+  GENKOKU:{name:'現代の国語',deadline:'2026-10-20T08:30',dlStr:'10月20日（火）考査',color:'#a855f7',
     sections:[
       {label:'課題図書を読む',note:'課題図書を読了する',probs:[1],opt:false}
     ]}
