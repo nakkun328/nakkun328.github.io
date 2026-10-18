@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LEAPテスト 506-635</title>
+<style>
+:root{color-scheme:dark;--bg:#0e1017;--surface:#171a24;--surface2:#212638;--text:#e8eaf3;--text2:#9aa1ba;--text3:#626a84;--border:rgba(255,255,255,.1);--accent:#818cf8;--accent2:#6366f1;--green:#4ade80;--red:#f87171;--amber:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
+.page{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:1.2rem}
+.sub{font-size:.75rem;color:var(--text3)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:10px;margin-bottom:14px}
+.tab{flex:1;border:0;background:transparent;color:var(--text2);padding:8px;border-radius:7px;font:inherit;cursor:pointer}
+.tab.on{background:var(--surface);color:var(--text);font-weight:700}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h2{font-size:.9rem;margin-bottom:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);background:var(--surface2);color:var(--text2);padding:5px 12px;border-radius:99px;font:inherit;font-size:.82rem;cursor:pointer}
+.chip.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.btn{border:0;background:var(--accent2);color:#fff;border-radius:8px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}
+.btn.sec{background:var(--surface2);color:var(--text);font-weight:400}
+.btn:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:8px 0}
+.bar>i{display:block;height:100%;background:var(--accent);transition:width .2s}
+.q{text-align:center;padding:10px 4px}
+.q .no{font-size:.75rem;color:var(--text3)}
+.q .ja{font-size:1.3rem;font-weight:700;margin:8px 0}
+.q .hint{font-size:1.4rem;letter-spacing:.12em;color:var(--accent);font-family:ui-monospace,Menlo,monospace}
+input[type=text]{font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 12px;width:100%}
+input[type=text]:focus{outline:2px solid var(--accent2);border-color:transparent}
+.fb{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:.95rem}
+.fb.ok{background:rgba(74,222,128,.12);color:var(--green)}
+.fb.ng{background:rgba(248,113,113,.12);color:var(--red)}
+.fb b{font-family:ui-monospace,Menlo,monospace;font-size:1.1rem}
+.score{font-size:2rem;font-weight:700;text-align:center;margin:6px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.item{display:flex;gap:8px;align-items:flex-start;padding:6px 4px;border-bottom:1px solid var(--border);font-size:.85rem}
+.item .n{flex-shrink:0;width:26px;color:var(--text3);text-align:right;padding-top:7px}
+.item .body{flex:1;min-width:0}
+.item .jpn{color:var(--text2);overflow-wrap:anywhere}
+.item .h{font-family:ui-monospace,Menlo,monospace;color:var(--accent);margin-right:6px}
+.item input{margin-top:4px;padding:5px 8px;font-size:.9rem}
+.mark{flex-shrink:0;width:22px;text-align:center;padding-top:7px;font-weight:700}
+.mark.ok{color:var(--green)}.mark.ng{color:var(--red)}
+.ans{font-family:ui-monospace,Menlo,monospace;color:var(--red);font-size:.85rem}
+table{width:100%;border-collapse:collapse;font-size:.83rem}
+td,th{padding:6px 6px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+th{color:var(--text3);font-weight:400;font-size:.72rem}
+td:nth-child(1),td:nth-child(3),td:nth-child(4),th:nth-child(1),th:nth-child(3),th:nth-child(4){white-space:nowrap}
+td:nth-child(2){min-width:120px}
+td.w{font-family:ui-monospace,Menlo,monospace;color:var(--green)}
+td.w.hide{color:transparent;background:var(--surface2);border-radius:4px;cursor:pointer;user-select:none}
+.pill{font-size:.65rem;padding:1px 7px;border-radius:99px;background:var(--surface2);color:var(--text2)}
+.warn{font-size:.78rem;color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"><div><h1>LEAPテスト 506–635</h1><div class="sub">LEAP Quiz No.5〜7＋本で追加した16語（136語）。日本語と最初の文字を見て、つづりを書きます。</div></div><div class="sub" id="stat"></div></div>
+  <div class="tabs"><button class="tab on" id="t-test" onclick="showTab('test')">テスト</button><button class="tab" id="t-list" onclick="showTab('list')">単語一覧</button></div>
+  <div id="main"></div>
+</div>
+<script>
+const RAW=`5|506|利用する権利|a_ _ _ _ _|access
+5|507|義務|d_ _ _|duty
+5|508|〔人が行為などの〕責任がある|r～|responsible
+5|509|政策|p_ _ _ _ _|policy
+5|510|〔選挙で人を〕選ぶ、選出する|e～|elect
+5|511|工業|i～y|industry
+5|512|収入|i_ _ _ _ _|income
+5|513|利益|p_ _ _ _ _|profit
+5|514|税金|t～|tax
+5|515|費用|e_ _ _ _ _ _|expense
+5|516|借金|d_ _ _|debt
+5|517|預金|d～|deposit
+5|518|料金|c～|charge
+5|519|賃金|w～|wage
+5|520|（一時的）不景気、不況|r～|recession
+5|521|～を消費する〔他動詞〕|c～|consume
+5|522|～を浪費する|w_ _ _ _|waste
+5|523|投資する|i～|invest
+5|524|～を輸入する|i～|import
+5|525|財政的な|f_ _ _ _ _ _ _ _|financial
+5|526|〔一時的に人を〕雇う|h～|hire
+5|527|〔正規に人を〕雇う|e～y|employ
+5|528|〔地位のある人が途中で公的に〕辞職する|r～|resign
+5|529|資格を得る|q～|qualify
+5|530|～を割り当てる|a～n|assign
+5|531|職業〔＜人生を占有するもの〕|o～|occupation
+5|532|職業〔＜人が歩んで[走って]来た道〕|c～|career
+5|533|専門的職業|p～|profession
+5|534|失業|u～|unemployment
+5|535|〔正式な〕公文書、記録文書|d～|document
+5|536|〔組織の〕部門、〔大学の〕学科、〔米国などの〕省|d～|department
+5|537|支店、部門、枝|b～|branch
+5|538|小売り|r～|retail
+5|539|同僚【単数形で】|c_ _ _ _ _ _ _ _|colleague
+5|515α|高価な|e_ _ _ _ _ _ _ _|expensive
+5|524α|～を輸出する|e～|export
+5|526α|〔従業員を〕クビにする、解雇する|f～|fire
+5|509α|警察|p～|police
+5|527α|雇い主|e～|employer
+5|533α|専門的な、プロの|p～l|professional
+6|541|構造|s～|structure
+6|543|建設|c～|construction
+6|544|機能|f～n|function
+6|545|表面|s～e|surface
+6|546|側面|a～|aspect
+6|547|端、（ナイフなどの）刃、優位|e～|edge
+6|548|（物の）構成、（人の）資質、化粧|m_ _ _ _ _|makeup
+6|549|（～で）構成されている (of)、（～に）ある (in)|c～|consist
+6|550|～を構成する、作曲する|c～e|compose
+6|551|～をくっつける、添付する、～に愛着を持たせる|a～|attach
+6|552|～をつなげる、～を関連づける、つながる|c～|connect
+6|553|～を関連づける、～を（順序立てて）話す、（～に）理解を示す|r～|relate
+6|554|（A）から（B を）連想する；同僚、共同経営者|a～|associate
+6|556|泥棒|t～f|thief
+6|558|動機|m～e|motive
+6|559|～を罰する|p～h|punish
+6|560|～に違反する、～を侵害する|v～|violate
+6|561|合法の、法的な|l～|legal
+6|563|対立、紛争|c～t|conflict
+6|564|競争する|c～e|compete
+6|565|～を打ち負かす、敗北|d～|defeat
+6|566|犠牲者|v～|victim
+6|567|障害（物）|o～e|obstacle
+6|568|害、～に害を与える|h～|harm
+6|569|〔武力で〕侵攻する、（プライバシーなど）を侵害する|i～|invade
+6|570|～を危険にさらす|e～|endanger
+6|571|～を中断する、人の話を遮る|i～|interrupt
+6|572|～を台無しにする、（子ども）を甘やかす|s～|spoil
+6|573|観客|s～r|spectator
+6|574|親戚、相対的な|r～|relative
+6|577|輸送、交通機関|t～n|transportation
+6|578|車両、伝達手段|v～|vehicle
+6|581|（～に）至る、（～な生活）を送る、鉛|l～|lead
+6|582|昇る、上昇|r～|rise
+6|583|流れる、流れ|f～w|flow
+6|584|破裂する、突然～し始める|b～t|burst
+6|586|通勤［通学］(する)|c～e|commute
+6|587|～と一緒に行く、～に伴う|a～y|accompany
+6|589|進歩、進む|p～|progress
+6|590|前進(する)、事前の|a～|advance
+7|591|（with ～）（～を）扱う|d～|deal
+7|592|～を扱う|h～|handle
+7|593|～を扱う、治療する|t～|treat
+7|594|（to ～）（～の）手がかり|c_ _ _|clue
+7|595|～を制限する|r～t|restrict
+7|596|（数量，範囲）を制限する、制限|l～t|limit
+7|597|～を禁じる|f～|forbid
+7|598|禁止、～を禁止する|b～|ban
+7|599|（to do）～するのを拒む（rejectは不可）|r～|refuse
+7|601|（A to do）（A）を説得して～させる|p～|persuade
+7|602|（A of B）（A）に（B を）確信させる|c～|convince
+7|603|～を奮起させる、（ある感情や考えを）吹き込む|i～|inspire
+7|604|（A from doing）（A）が～する気をそぐ|d～|discourage
+7|605|～を促進する、昇進させる|p～|promote
+7|607|膨張する、～を拡大する|e～|expand
+7|608|～を延長する、伸びる|e～|extend
+7|609|～を広くする、広がる|b～|broaden
+7|610|～を広げる、蔓延|s～|spread
+7|611|（荷物など）を縛る、（ひもなど）を結ぶ|t～|tie
+7|612|（ボタンなど）を留める、（シートベルト）を締める|f～|fasten
+7|613|（A to B）（A）を（B に）固定する|f_ _|fix
+7|614|（機械など）を設置する|i～|install
+7|616|（人・命令・規則など）に従う|o～|obey
+7|617|（in ～）（活動に）従事する|e～|engage
+7|618|（～に）ぶつかる、（～に）偶然出会う|b～p|bump
+7|619|身をかがめる、～を曲げる、（道の）カーブ|b～|bend
+7|620|抱きしめる、抱擁|h～|hug
+7|622|（at[on] ～）（～を）見つめる、視線，凝視|g～|gaze
+7|623|ちらりと見る、ちらりと見ること|g～|glance
+7|624|～がちらりと見える、ちらりと見えること|g～|glimpse
+7|625|伸ばす、広がる、広がり|s～|stretch
+7|626|つまずく、（across[into] ～）（～に）偶然出会う|s～|stumble
+7|627|～を（強く）押す、（the －）報道機関，出版|p～|press
+7|628|～を（ずるずると）引きずる|d～|drag
+7|630|～をひっかく，かく、ひっかき傷|s～|scratch
+7|631|おじぎする、おじぎ|b～|bow
+7|632|うなずく、（off）うたた寝する、うなずき，会釈|n～|nod
+7|633|ため息をつく、ため息|s～|sigh
+7|634|あくびをする、あくび|y～|yawn
+7|635|くしゃみをする|s～e|sneeze
+6|540|制度、組織|s～|system
+6|542|建築（様式）|a～|architecture
+6|555|～を貼り付ける|s～|stick
+6|557|犯罪|c～|crime
+6|562|敵|e～|enemy
+6|575|出発|d～|departure
+6|576|目的地|d～|destination
+6|579|（旅行時の）手荷物|b～|baggage
+6|580|～経由で|v～|via
+6|585|（固体が）溶ける|m～|melt
+6|588|（ガス、熱、光などを）排出する|e～|emit
+7|600|～を拒絶する|r～|reject
+7|606|～を促進させる|b～|boost
+7|615|～を我慢する|r～|resist
+7|621|（at ～）（～を）じっと見つめる|s～|stare
+7|629|（against[on] ～）（～に）寄りかかる|l～|lean`;
+// 最初が同じで意味が似ているペアだけ、最後の文字も見せる（それ以外は最初の文字だけ）
+const KEEP_LAST=['employ','employer','profession','professional','compose','consist','refuse','reject','stretch','spread'];
+const W=RAW.split('\n').map((l,i)=>{const [q,no,ja,hint,ans]=l.split('|');return{id:i,q:+q,no,ja,hint:KEEP_LAST.includes(ans)?ans[0]+'…'+ans.slice(-1):ans[0]+'…',ans}});
+const MISSING=[];
+const ADDED=[540,542,555,557,562,575,576,579,580,585,588,600,606,615,621,629]; // 本で確認して追加した単語（番号は前後の単語から推定）
+const QN={5:'No.5（506–539）',6:'No.6（540–590）',7:'No.7（591–635）'};
+const KEY='leap-test-v1';
+let ST=(()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}})();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(ST))}catch(e){}}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm=s=>String(s||'').trim().toLowerCase();
+function rec(w,ok){const s=ST[w.id]||(ST[w.id]={ok:0,ng:0,last:null});if(ok)s.ok++;else s.ng++;s.last=ok;save()}
+const weak=()=>W.filter(w=>ST[w.id]&&ST[w.id].last===false);
+let tab='test';
+let cfg={set:'5',mode:'one',order:'seq'};
+let run=null; // {items,i,wrong:[],results:{}, done:false, answered:false}
+function showTab(t){tab=t;$('t-test').classList.toggle('on',t==='test');$('t-list').classList.toggle('on',t==='list');render()}
+function pool(){
+  if(cfg.set==='all')return W.slice();
+  if(cfg.set==='weak')return weak();
+  return W.filter(w=>String(w.q)===cfg.set);
+}
+const skey=w=>w.q*10000+(String(w.no).includes('α')?5000:0)+parseInt(w.no);
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function start(items){
+  items=items||pool();if(!items.length){alert('出題できる単語がありません');return}
+  items=cfg.order==='rand'?shuffle(items):items.slice().sort((a,b)=>skey(a)-skey(b));
+  run={items,i:0,wrong:[],res:{},answered:false,done:false,last:null};render();
+}
+function renderStat(){
+  const tot=Object.values(ST).reduce((a,s)=>a+s.ok+s.ng,0),ok=Object.values(ST).reduce((a,s)=>a+s.ok,0);
+  $('stat').textContent=tot?`通算 ${ok}/${tot}（${Math.round(ok/tot*100)}%）／ 苦手 ${weak().length}語`:'まだ記録がありません';
+}
+/* ---- setup ---- */
+function setupHTML(){
+  const sets=[['5','No.5 506–539'],['6','No.6 540–590'],['7','No.7 591–635'],['all','全136語'],['weak',`苦手のみ（${weak().length}）`]];
+  return `<div class="card"><h2>範囲</h2><div class="chips">${sets.map(([k,l])=>`<button class="chip ${cfg.set===k?'on':''}" onclick="cfg.set='${k}';render()">${l}</button>`).join('')}</div></div>
+  <div class="card"><h2>形式</h2><div class="chips"><button class="chip ${cfg.mode==='one'?'on':''}" onclick="cfg.mode='one';render()">一問ずつ（すぐ答え合わせ）</button><button class="chip ${cfg.mode==='all'?'on':''}" onclick="cfg.mode='all';render()">まとめて（紙のテスト形式）</button></div>
+  <div class="chips" style="margin-top:8px"><button class="chip ${cfg.order==='seq'?'on':''}" onclick="cfg.order='seq';render()">番号順</button><button class="chip ${cfg.order==='rand'?'on':''}" onclick="cfg.order='rand';render()">ランダム</button></div></div>
+  <div class="row"><button class="btn" onclick="start()">スタート（${pool().length}語）</button></div>
+  <div class="card" style="margin-top:14px"><h2>クイズに載っていなかった単語</h2><div class="sub" style="font-size:.8rem;color:var(--text2)">${MISSING.length?MISSING.join('、'):'506〜635の全番号がそろいました。'}</div><div class="warn" style="margin-top:6px">本で追加した単語（${ADDED.length}語）: ${ADDED.join('、')}。番号は前後の単語から推定したものです。クイズでは616が2回出ていたため、installは614に直しました。</div></div>`;
+}
+/* ---- one by one ---- */
+function oneHTML(){
+  const r=run;
+  if(r.done)return resultHTML();
+  const w=r.items[r.i];
+  const pct=Math.round(r.i/r.items.length*100);
+  let h=`<div class="card"><div class="row" style="justify-content:space-between"><span class="sub">${r.i+1} / ${r.items.length}</span><span class="sub">正解 ${r.items.length&&Object.values(r.res).filter(x=>x).length}</span></div><div class="bar"><i style="width:${pct}%"></i></div>
+  <div class="q"><div class="no">${esc(w.no)} <span class="pill">${QN[w.q]}</span></div><div class="ja">${esc(w.ja)}</div><div class="hint">${esc(w.hint)}</div></div>
+  <input type="text" id="ans" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="英単語を入力して Enter" ${r.answered?'disabled':''}>`;
+  if(r.answered){h+=r.last?`<div class="fb ok">○ 正解！ <b>${esc(w.ans)}</b></div>`:`<div class="fb ng">× 正解は <b>${esc(w.ans)}</b></div>`;
+    h+=`<div class="row" style="margin-top:10px"><button class="btn" id="nextb" onclick="next()">次へ（Enter）</button></div>`}
+  else h+=`<div class="row" style="margin-top:10px"><button class="btn" onclick="check()">答え合わせ（Enter）</button><button class="btn sec" onclick="giveUp()">わからない</button></div>`;
+  return h+`</div>`;
+}
+function check(){const w=run.items[run.i];const v=$('ans').value;const ok=norm(v)===norm(w.ans);run.res[w.id]=ok;run.last=ok;if(!ok)run.wrong.push({w,v});rec(w,ok);run.answered=true;render()}
+function giveUp(){const w=run.items[run.i];run.res[w.id]=false;run.last=false;run.wrong.push({w,v:''});rec(w,false);run.answered=true;render()}
+function next(){run.i++;run.answered=false;if(run.i>=run.items.length)run.done=true;render()}
+/* ---- all at once ---- */
+function allHTML(){
+  const r=run;
+  if(r.done&&r.graded)return resultHTML();
+  const half=Math.ceil(r.items.length/2);
+  const row=(w,i)=>`<div class="item"><span class="n">${i+1}</span><div class="body"><div class="jpn"><span class="h">${esc(w.hint)}</span>${esc(w.ja)} <span class="sub">(${esc(w.no)})</span></div><input type="text" data-id="${w.id}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div></div>`;
+  return `<div class="card"><div class="row" style="justify-content:space-between"><span class="sub">${r.items.length}問</span><button class="btn" onclick="gradeAll()">採点する</button></div><div class="grid"><div>${r.items.slice(0,half).map((w,i)=>row(w,i)).join('')}</div><div>${r.items.slice(half).map((w,i)=>row(w,i+half)).join('')}</div></div><div class="row" style="margin-top:12px"><button class="btn" onclick="gradeAll()">採点する</button></div></div>`;
+}
+function gradeAll(){
+  const r=run;r.wrong=[];r.res={};
+  document.querySelectorAll('input[data-id]').forEach(el=>{const w=W[+el.dataset.id];const ok=norm(el.value)===norm(w.ans);r.res[w.id]=ok;if(!ok)r.wrong.push({w,v:el.value});rec(w,ok)});
+  r.done=true;r.graded=true;render();
+}
+/* ---- result ---- */
+function resultHTML(){
+  const r=run,tot=r.items.length,ok=tot-r.wrong.length;
+  let h=`<div class="card"><div class="sub" style="text-align:center">結果</div><div class="score">${ok} / ${tot}</div><div class="bar"><i style="width:${Math.round(ok/tot*100)}%;background:${ok/tot>=.9?'var(--green)':ok/tot>=.7?'var(--amber)':'var(--red)'}"></i></div>`;
+  h+=r.wrong.length?`<h2 style="margin-top:12px">間違えた単語（${r.wrong.length}）</h2><table><tr><th>番号</th><th>意味</th><th>正解</th><th>あなたの答え</th></tr>${r.wrong.map(({w,v})=>`<tr><td>${esc(w.no)}</td><td>${esc(w.ja)}</td><td class="w">${esc(w.ans)}</td><td>${esc(v)||'—'}</td></tr>`).join('')}</table>`:`<div class="fb ok" style="margin-top:10px">全問正解！</div>`;
+  h+=`<div class="row" style="margin-top:14px">${r.wrong.length?`<button class="btn" onclick="start(run.wrong.map(x=>x.w))">間違いだけやり直す</button>`:''}<button class="btn sec" onclick="run=null;render()">最初に戻る</button></div></div>`;
+  return h;
+}
+/* ---- list ---- */
+let lq='all',reveal=false;
+function listHTML(){
+  const rows=W.filter(w=>lq==='all'||String(w.q)===lq).sort((a,b)=>skey(a)-skey(b));
+  return `<div class="card"><div class="row" style="justify-content:space-between"><div class="chips">${[['all','全部'],['5','No.5'],['6','No.6'],['7','No.7']].map(([k,l])=>`<button class="chip ${lq===k?'on':''}" onclick="lq='${k}';render()">${l}</button>`).join('')}</div><button class="chip ${reveal?'on':''}" onclick="reveal=!reveal;render()">${reveal?'答えを隠す':'答えを全部見る'}</button></div>
+  <div class="sub" style="margin:8px 0">答えのマスをタップすると、その単語だけ見られます。</div>
+  <table><tr><th>番号</th><th>意味</th><th>ヒント</th><th>答え</th></tr>${rows.map(w=>`<tr><td>${esc(w.no)}</td><td>${esc(w.ja)}</td><td style="font-family:ui-monospace,Menlo,monospace;color:var(--accent)">${esc(w.hint)}</td><td class="w ${reveal?'':'hide'}" onclick="this.classList.toggle('hide')">${esc(w.ans)}</td></tr>`).join('')}</table></div>`;
+}
+function render(){
+  renderStat();
+  if(tab==='list'){$('main').innerHTML=listHTML();return}
+  if(!run){$('main').innerHTML=setupHTML();return}
+  $('main').innerHTML=(cfg.mode==='one'||run.done&&!run.graded&&cfg.mode==='one')?oneHTML():allHTML();
+  const a=$('ans');if(a&&!run.answered)a.focus();
+  const nb=$('nextb');if(nb)nb.focus();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||tab!=='test'||!run||run.done||(e.target&&e.target.tagName==='BUTTON'))return;
+  if(cfg.mode==='one'){e.preventDefault();run.answered?next():check()}
+});
+render();
+</script>
+</body>
+</html>
