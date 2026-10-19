@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地学 一問一答</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d1d1f;--sub:#6b6b70;--line:#e3e1da;--acc:#c2410c;--ok:#15803d;--ng:#b91c1c;--chip:#ece9e1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17171a;--card:#222226;--ink:#ececf0;--sub:#9a9aa3;--line:#33333a;--acc:#fb923c;--ok:#4ade80;--ng:#f87171;--chip:#2c2c32}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,"Hiragino Sans",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 80px}
+h1{font-size:22px;margin:4px 0 2px}
+.meta{color:var(--sub);font-size:13px;margin-bottom:12px}
+.bar{position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;border-bottom:1px solid var(--line);margin-bottom:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:13px}
+button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.stat{font-size:13px;color:var(--sub);margin-top:6px}
+.prog{height:4px;background:var(--chip);border-radius:2px;margin-top:6px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok);width:0}
+.sec{font-weight:700;font-size:14px;color:var(--acc);margin:18px 0 6px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.q.ok{border-left:4px solid var(--ok)}.q.ng{border-left:4px solid var(--ng)}
+.qt{font-size:15px}
+.n{color:var(--sub);font-size:12px;margin-right:6px}
+.ans{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--chip);font-weight:700;cursor:pointer;user-select:none}
+.ans{position:relative}
+.ans.hid>*{visibility:hidden}
+.ans.hid::before{content:"タップで答え";position:absolute;left:10px;top:8px;color:var(--sub);font-weight:400;font-size:13px}
+.ans .note{display:block;font-weight:400;font-size:13px;color:var(--sub)}
+.row{display:flex;gap:6px;margin-top:8px}
+.row button{padding:4px 14px}
+.row .o.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.row .x.on{background:var(--ng);border-color:var(--ng);color:#fff}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 4px;background:var(--card)}
+td,th{border:1px solid var(--line);padding:5px 6px;text-align:center}
+.tblwrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>地学 一問一答</h1>
+<div class="meta">プリント No.15〜20・資料8（火山・火成岩）｜答えをタップで表示 → ○×で記録</div>
+<div class="bar">
+  <div class="chips" id="flt"></div>
+  <div class="chips" style="margin-top:6px">
+    <button id="bAll">全部の答えを隠す</button>
+    <button id="bShow">全部表示</button>
+    <button id="bShuf">シャッフル</button>
+    <button id="bNg">×だけ</button>
+    <button id="bReset">記録リセット</button>
+  </div>
+  <div class="stat" id="stat"></div>
+  <div class="prog"><i id="pg"></i></div>
+</div>
+<div id="list"></div>
+
+<div class="sec">まとめ表（No.20）</div>
+<div class="tblwrap"><table>
+<tr><th></th><th>超苦鉄質</th><th>苦鉄質</th><th>中間質</th><th>ケイ長質</th></tr>
+<tr><th>SiO₂</th><td>〜45%</td><td>45〜52%</td><td>52〜66%</td><td>66%〜</td></tr>
+<tr><th>色指数</th><td>大</td><td>約70〜35</td><td>約35〜10</td><td>約10以下</td></tr>
+<tr><th>火山岩（斑状）</th><td>—</td><td>玄武岩</td><td>安山岩</td><td>デイサイト・流紋岩</td></tr>
+<tr><th>深成岩（等粒状）</th><td>かんらん岩</td><td>斑れい岩</td><td>閃緑岩</td><td>花こう岩</td></tr>
+<tr><th>粘性</th><td colspan="4">小 ←――――――→ 大</td></tr>
+<tr><th>噴火</th><td colspan="4">おだやか ←――――――→ 爆発的</td></tr>
+</table></div>
+</div>
+<script>
+const Q=[
+// [section, question, answer, note]
+["No.15-16 マグマの発生と上昇","マグマが地表に噴出する現象を何という？","噴火"],
+["No.15-16 マグマの発生と上昇","発生したマグマが上昇するのは、周囲の岩石より密度が（大きい／小さい）ため。","小さい","浮力で上昇する"],
+["No.15-16 マグマの発生と上昇","上昇したマグマが周囲と密度がつり合うところで一時的にとどまったものを何という？","マグマだまり","地下 数〜10数km"],
+["No.15-16 マグマの発生と上昇","マグマが発生する深さはおよそ地下何km？","約100 km"],
+["No.15-16 マグマの発生と上昇","地下約100kmは地球の層構造のどこに当たり、何という岩石からなる？","上部マントル／かんらん岩"],
+["No.15-16 マグマの発生と上昇","融点の異なる鉱物の集合体である岩石が、融けやすい部分から先に融けることを何という？","部分溶融","鉱物粒子のすき間にマグマがしみ出す"],
+["No.15-16 マグマの発生と上昇","マグマだまりの周囲の圧力が下がると、マグマに含まれる何が溶けきれなくなって発泡する？","揮発性成分（H₂O・CO₂など）","→密度が小さくなり再び上昇"],
+["No.15-16 マグマの発生と上昇","かんらん岩の融点は、地下の圧力が高いほど（高く／低く）なる。","高く","だから通常マントルは固体のまま"],
+["No.15-16 マグマの発生と上昇","マグマができる条件①：温度がほぼ変わらないまま圧力が下がって融けることを何という？","減圧融解","中央海嶺・ホットスポット"],
+["No.15-16 マグマの発生と上昇","マグマができる条件②：沈み込み帯でマントルに何が供給されると融点が下がる？","水","沈み込んだ海洋プレートから"],
+["No.15-16 マグマの発生と上昇","活火山が分布する場所を2つ","プレートの境界・ホットスポット"],
+["No.15-16 マグマの発生と上昇","モデル実験：ウレタン液は何に対応？","マグマ"],
+["No.15-16 マグマの発生と上昇","モデル実験：ウレタンの発泡は何に対応？","マグマの発泡（火山ガス）"],
+["No.15-16 マグマの発生と上昇","モデル実験：ウレタンの固化は何に対応？","マグマが冷え固まる（火山岩・火山体）"],
+["No.15-16 マグマの発生と上昇","モデル実験：瓶の周りの砂は何に対応？","地殻（周囲の岩石）"],
+["No.15-16 マグマの発生と上昇","マグマがマグマだまりから上昇するしくみ（モデル実験から）","発泡して密度が小さくなり、周囲より軽くなって上昇する"],
+
+["No.17 火山噴出物","噴火によって地表に放出された物質をまとめて何という？","火山噴出物"],
+["No.17 火山噴出物","マグマから分離した揮発性成分と、地下水由来の水蒸気が混ざったものを何という？","火山ガス"],
+["No.17 火山噴出物","火山ガスの主成分（90%以上）は？","水蒸気（H₂O）"],
+["No.17 火山噴出物","火山ガスに含まれる水蒸気以外の成分を3つ","二酸化炭素 CO₂・二酸化硫黄 SO₂・硫化水素 H₂S"],
+["No.17 火山噴出物","地表に出たマグマおよびそれが固まったものを何という？","溶岩"],
+["No.17 火山噴出物","表面がなめらかで縄状のしわがある溶岩（粘性小）","パホイホイ溶岩"],
+["No.17 火山噴出物","表面がガサガサ・トゲトゲした溶岩","アア溶岩"],
+["No.17 火山噴出物","角ばった岩塊でおおわれた溶岩（粘性大）","塊状溶岩"],
+["No.17 火山噴出物","噴火でマグマや火山体が破砕され飛散したもの","火山砕屑物（火砕物）"],
+["No.17 火山噴出物","直径64mm以上の火山砕屑物","火山岩塊"],
+["No.17 火山噴出物","直径2〜64mmの火山砕屑物","火山れき"],
+["No.17 火山噴出物","直径2mm以下の火山砕屑物","火山灰"],
+["No.17 火山噴出物","特定の外形をもつ火山砕屑物（紡錘状・パン皮状・牛糞状など）","火山弾","ほかにペレーの毛・ペレーの涙"],
+["No.17 火山噴出物","多孔質で白っぽいもの／黒っぽいもの","白：軽石　黒：スコリア"],
+
+["No.18 火山分布・噴火様式","活火山の定義：過去およそ何年以内に噴火、または現在活発な噴気活動がある火山？","約1万年"],
+["No.18 火山分布・噴火様式","活火山は世界に約何個、日本に何個？","世界 約1500／日本 111"],
+["No.18 火山分布・噴火様式","海溝やトラフに最も近い活火山を結んだ線を何という？","火山前線（火山フロント）"],
+["No.18 火山分布・噴火様式","火山前線は海溝・トラフからおよそ何km大陸側にある？","約100〜300 km"],
+["No.18 火山分布・噴火様式","火山前線の直下では、沈み込んだ海洋プレートの上面が深さ約何kmに達している？","約100 km"],
+["No.18 火山分布・噴火様式","噴火のようすは、マグマの何と何によって決まる？（2つ）","粘性・揮発性成分（ガス）の量","粘性はSiO₂の割合と温度で決まる"],
+["No.18 火山分布・噴火様式","SiO₂の割合が多いほど、粘性は（大きい／小さい）","大きい（ねばねば）"],
+["No.18 火山分布・噴火様式","マグマの温度が高いほど、粘性は（大きい／小さい）","小さい"],
+["No.18 火山分布・噴火様式","粘性が大きいマグマでは噴火はどうなる？理由も","爆発的／ガスが抜けにくく圧力が高まる"],
+["No.18 火山分布・噴火様式","粘性が小さいマグマでは噴火はどうなる？","おだやか（溶岩流が主）","ガスが抜けやすい"],
+["No.18 火山分布・噴火様式","1回の火山活動で形成される火山","単成火山","例：スコリア丘（大室山）"],
+["No.18 火山分布・噴火様式","複数回の火山活動で形成される火山","複成火山"],
+["No.18 火山分布・噴火様式","粘性小のマグマ（玄武岩質）がつくる、傾斜のゆるやかな火山の形と例","盾状火山／マウナロア・キラウエア（ハワイ）"],
+["No.18 火山分布・噴火様式","溶岩流と火山砕屑物が交互に積み重なった火山の形と例","成層火山／富士山"],
+["No.18 火山分布・噴火様式","粘性大のマグマが盛り上がってできた火山の形と例","溶岩ドーム（溶岩円頂丘）／昭和新山"],
+["No.18 火山分布・噴火様式","粘性が大きいマグマの種類（岩石名でいうと？）","デイサイト質・流紋岩質"],
+["No.18 火山分布・噴火様式","マグマの熱で地下水が加熱・沸騰して起こる爆発","水蒸気爆発","噴出物にマグマ由来の物質を含まない"],
+["No.18 火山分布・噴火様式","マグマが地下水に直接触れて起こる爆発","マグマ水蒸気爆発","噴出物にマグマ由来の物質を含む"],
+["No.18 火山分布・噴火様式","高温の火山ガスと火山砕屑物が一体となって高速で斜面を流れ下る現象","火砕流"],
+["No.18 火山分布・噴火様式","大量のマグマが噴出してマグマだまりの上が陥没してできた凹地","カルデラ"],
+
+["資料8 偏光顕微鏡","偏光顕微鏡で使う2枚の偏光板を何という？","ニコル（下方ニコル・上方ニコル）"],
+["資料8 偏光顕微鏡","上方ニコルを入れずに観察する状態","開放ニコル"],
+["資料8 偏光顕微鏡","上方ニコルを入れ、2枚の偏光板の方向を直交させた状態","直交ニコル"],
+["資料8 偏光顕微鏡","開放ニコルで回転させると有色鉱物の色が変化する性質","多色性"],
+["資料8 偏光顕微鏡","直交ニコルで鉱物に見える色","干渉色"],
+["資料8 偏光顕微鏡","直交ニコルで回転すると90°ごとに真っ暗になること","消光"],
+["資料8 偏光顕微鏡","岩石薄片（プレパラート）の厚さ","約0.03 mm（30 μm）"],
+
+["No.19 火成岩の組織","マグマが冷えて固まってできた岩石","火成岩"],
+["No.19 火成岩の組織","マグマの冷え方の違いで、鉱物の粒の大きさ・形・集まり方などが異なる。これを何という？","組織"],
+["No.19 火成岩の組織","火成岩は何と何からなる？","鉱物結晶とガラス（火山ガラス）"],
+["No.19 火成岩の組織","十分成長した粗粒の結晶だけからなる組織","等粒状組織"],
+["No.19 火成岩の組織","等粒状組織はどこでどう冷えてできる？","地下深くでゆっくり冷えて","→深成岩"],
+["No.19 火成岩の組織","大きな結晶と、細かい結晶やガラスからなる組織","斑状組織","→火山岩"],
+["No.19 火成岩の組織","斑状組織の大きな結晶／細かい部分","斑晶／石基"],
+["No.19 火成岩の組織","斑状組織はどうやってできる？","地下で成長した斑晶を含むマグマが地表付近で急に冷えて石基ができる"],
+["No.19 火成岩の組織","結晶本来の形をしているもの／一部だけ／他の結晶のすき間を埋めた形","自形／半自形／他形","自形のものほど先に晶出した"],
+["No.19 火成岩の組織","サリチル酸フェニル実験：ゆっくり冷やすと結晶は？急に冷やすと？","ゆっくり→大きく成長／急冷→小さい結晶が多数"],
+
+["No.20 火成岩の分類","火成岩の色は、含まれる何で決まる？","鉱物の組成"],
+["No.20 火成岩の分類","白や透明・淡い色の鉱物で、FeやMgをほとんど含まないもの","無色鉱物","石英・長石（カリ長石・斜長石）"],
+["No.20 火成岩の分類","黒や濃緑など濃い色の鉱物で、FeやMgを多く含むもの","有色鉱物","黒雲母・角閃石・輝石・かんらん石"],
+["No.20 火成岩の分類","無色鉱物を3つ","石英・カリ長石・斜長石"],
+["No.20 火成岩の分類","有色鉱物を4つ","黒雲母・角閃石・輝石・かんらん石"],
+["No.20 火成岩の分類","火成岩全体に対する有色鉱物の体積の割合（%）","色指数"],
+["No.20 火成岩の分類","色指数が大きい＝見た目は？ SiO₂は？","黒っぽい／SiO₂が少ない"],
+["No.20 火成岩の分類","SiO₂ 45〜52%の火成岩の区分","苦鉄質岩"],
+["No.20 火成岩の分類","SiO₂ 52〜66%の火成岩の区分","中間質岩"],
+["No.20 火成岩の分類","SiO₂ 66%以上の火成岩の区分","ケイ長質岩"],
+["No.20 火成岩の分類","SiO₂ 45%未満の火成岩の区分と代表的な岩石","超苦鉄質岩／かんらん岩"],
+["No.20 火成岩の分類","苦鉄質の火山岩／深成岩","玄武岩／斑れい岩"],
+["No.20 火成岩の分類","中間質の火山岩／深成岩","安山岩／閃緑岩"],
+["No.20 火成岩の分類","ケイ長質の火山岩／深成岩","流紋岩（デイサイト）／花こう岩"],
+["No.20 火成岩の分類","火山岩3つを苦鉄質→ケイ長質の順に","玄武岩→安山岩→流紋岩"],
+["No.20 火成岩の分類","深成岩3つを苦鉄質→ケイ長質の順に","斑れい岩→閃緑岩→花こう岩"],
+["No.20 火成岩の分類","苦鉄質ほどマグマの粘性は？噴火は？","粘性小／おだやか"],
+["No.20 火成岩の分類","ケイ長質ほどマグマの粘性は？噴火は？","粘性大／爆発的"],
+["No.20 火成岩の分類","ケイ長質の岩石にだけ多く含まれる無色鉱物2つ","石英・カリ長石"],
+["No.20 火成岩の分類","苦鉄質〜超苦鉄質に多い有色鉱物","かんらん石・輝石"],
+];
+const KEY='chigaku-qa-v1';
+let rec={};try{rec=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(rec))}catch(e){}};
+let order=Q.map((_,i)=>i),sec='全部',ngOnly=false,open=new Set();
+const secs=['全部',...new Set(Q.map(q=>q[0]))];
+const flt=document.getElementById('flt');
+function chips(){flt.innerHTML=secs.map(s=>`<button class="${s===sec?'on':''}" data-s="${s}">${s==='全部'?'全部':s.split(' ')[0]}</button>`).join('')}
+flt.onclick=e=>{const s=e.target.dataset.s;if(s){sec=s;chips();render()}};
+function render(){
+  const ids=order.filter(i=>(sec==='全部'||Q[i][0]===sec)&&(!ngOnly||rec[i]==='x'));
+  let h='',last='';
+  ids.forEach(i=>{const [s,q,a,n]=Q[i];
+    if(!shuffled&&s!==last){h+=`<div class="sec">${s}</div>`;last=s}
+    const r=rec[i]||'';
+    h+=`<div class="q ${r==='o'?'ok':r==='x'?'ng':''}" id="q${i}"><div class="qt"><span class="n">${i+1}</span>${q}</div>
+    <div class="ans ${open.has(i)?'':'hid'}" data-a="${i}"><span>${a}</span>${n?`<span class="note">${n}</span>`:''}</div>
+    <div class="row"><button class="o ${r==='o'?'on':''}" data-o="${i}">○</button><button class="x ${r==='x'?'on':''}" data-x="${i}">×</button></div></div>`});
+  document.getElementById('list').innerHTML=h||'<p class="meta">該当なし</p>';
+  const pool=Q.map((_,i)=>i).filter(i=>sec==='全部'||Q[i][0]===sec);
+  const o=pool.filter(i=>rec[i]==='o').length,x=pool.filter(i=>rec[i]==='x').length;
+  document.getElementById('stat').textContent=`${pool.length}問中 ○${o}・×${x}・未${pool.length-o-x}`;
+  document.getElementById('pg').style.width=(o/pool.length*100)+'%';
+  document.getElementById('bNg').classList.toggle('on',ngOnly);
+}
+let shuffled=false;
+document.getElementById('list').onclick=e=>{const t=e.target.closest('[data-a],[data-o],[data-x]');if(!t)return;
+  if(t.dataset.a!==undefined){const i=+t.dataset.a;open.has(i)?open.delete(i):open.add(i);t.classList.toggle('hid');return}
+  const i=+(t.dataset.o??t.dataset.x),v=t.dataset.o!==undefined?'o':'x';
+  rec[i]=rec[i]===v?undefined:v;if(!rec[i])delete rec[i];save();open.add(i);render()};
+document.getElementById('bAll').onclick=()=>{open.clear();render()};
+document.getElementById('bShow').onclick=()=>{Q.forEach((_,i)=>open.add(i));render()};
+document.getElementById('bShuf').onclick=()=>{shuffled=!shuffled;
+  order=Q.map((_,i)=>i);if(shuffled)for(let i=order.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[order[i],order[j]]=[order[j],order[i]]}
+  document.getElementById('bShuf').classList.toggle('on',shuffled);open.clear();render()};
+document.getElementById('bNg').onclick=()=>{ngOnly=!ngOnly;open.clear();render()};
+document.getElementById('bReset').onclick=()=>{if(confirm('○×の記録を消す？')){rec={};save();render()}};
+chips();render();
+</script>
+</body>
+</html>
